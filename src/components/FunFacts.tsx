@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getArticleImages, ArticleImage } from '../api/wikipedia';
 import './FunFacts.css';
 
 interface FunFact {
@@ -8,20 +9,22 @@ interface FunFact {
     title: string;
     description: string;
     link: string;
+    thumbnail?: ArticleImage;
   }[];
 }
 
 const FunFacts: React.FC = () => {
   const navigate = useNavigate();
+  const [facts, setFacts] = useState<FunFact[]>([]);
 
-  const funFacts: FunFact[] = [
+  const initialFunFacts: FunFact[] = [
     {
       text: "Did you know... that a stray dog named Argo visited the ruins of Pompeii daily for 15 years and was considered its 'guardian'?",
       relatedArticles: [
         {
           title: "Argo - Pompeii's Guardian Dog",
           description: "The heartwarming story of a stray dog who became the unofficial guardian of the ancient ruins of Pompeii",
-          link: "Argo_(Pompeii_dog)"
+          link: "Argo_(dog)"
         },
         {
           title: "Pompeii",
@@ -47,24 +50,60 @@ const FunFacts: React.FC = () => {
     }
   ];
 
+  useEffect(() => {
+    const fetchImages = async () => {
+      const factsWithImages = await Promise.all(
+        initialFunFacts.map(async (fact) => {
+          const articlesWithImages = await Promise.all(
+            fact.relatedArticles.map(async (article) => {
+              const images = await getArticleImages(article.link);
+              return {
+                ...article,
+                thumbnail: images.length > 0 ? images[0] : undefined
+              };
+            })
+          );
+          return {
+            ...fact,
+            relatedArticles: articlesWithImages
+          };
+        })
+      );
+      setFacts(factsWithImages);
+    };
+
+    fetchImages();
+  }, []);
+
   const handleArticleClick = (link: string) => {
     navigate(`/article/${encodeURIComponent(link)}`);
   };
 
   return (
     <div className="fun-facts-container">
-      {funFacts.map((fact, index) => (
+      {facts.map((fact, index) => (
         <div key={index} className="fun-fact">
           <p className="fact-text">{fact.text}</p>
           <div className="related-articles">
             {fact.relatedArticles.map((article, articleIndex) => (
               <div
                 key={articleIndex}
-                className="article-card"
+                className={`article-card ${!article.thumbnail ? 'no-image' : ''}`}
                 onClick={() => handleArticleClick(article.link)}
               >
-                <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
-                <p>{article.description}</p>
+                {article.thumbnail && article.thumbnail.url && (
+                  <div className="article-thumbnail">
+                    <img
+                      src={article.thumbnail.url}
+                      alt={article.thumbnail.description || article.title}
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div className="article-content">
+                  <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
+                  <p>{article.description}</p>
+                </div>
               </div>
             ))}
           </div>

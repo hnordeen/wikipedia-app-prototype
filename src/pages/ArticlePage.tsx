@@ -13,6 +13,10 @@ const ArticlePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [title]);
+
   const handleBack = () => {
     navigate(-1);
   };
