@@ -1,0 +1,82 @@
+.fun-facts-container {
+  padding: 24px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 24px auto;
+  max-width: 800px;
+}
+
+.fun-fact {
+  margin-bottom: 32px;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.fun-fact:last-child {
+  margin-bottom: 0;
+}
+
+.fact-text {
+  font-size: 20px;
+  color: #1a1a1a;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.related-articles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.article-card {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.article-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.article-card h3 {
+  font-size: 18px;
+  color: #0366d6;
+  margin: 0 0 8px 0;
+}
+
+.article-card p {
+  font-size: 14px;
+  color: #586069;
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .fun-facts-container {
+    margin: 16px;
+    padding: 16px;
+  }
+
+  .fun-fact {
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  .fact-text {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .related-articles {
+    grid-template-columns: 1fr;
+  }
+} 
