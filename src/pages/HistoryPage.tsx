@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
 import { useHistory } from '../hooks/useHistory';
 import { getHistoryInsights } from '../services/historyService';
+import NavBar from '../components/NavBar';
 import './HistoryPage.css';
 
 const HistoryPage: React.FC = () => {
@@ -75,7 +76,7 @@ const HistoryPage: React.FC = () => {
         <div className="insight-card">
           <div className="most-active-hour">{formatHour(insights.mostActiveHour.hour)}</div>
           <div className="most-active-label">Most active reading time</div>
-          <div className="insight-label">({insights.mostActiveHour.count} articles)</div>
+          {/* <div className="insight-label">({insights.mostActiveHour.count} articles)</div> */}
         </div>
       )}
     </div>
@@ -84,26 +85,25 @@ const HistoryPage: React.FC = () => {
   if (Object.keys(groupedHistory).length === 0) {
     return (
       <div className="history-page">
-        <div className="history-header">
-          <div className="header-content">
-            <h1 className="history-title">Activity</h1>
-          </div>
+        <div className="title-container">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
+          <h1 className="page-title">Activity</h1>
         </div>
         {renderDetailedInsights()}
         <div className="history-empty">
           <h2>No Activity</h2>
           <p>Articles you view will appear here</p>
         </div>
+        <NavBar />
       </div>
     );
   }
 
   return (
     <div className="history-page">
-      <div className="history-header">
-        <div className="header-content">
-          <h1 className="history-title">Activity</h1>
-        </div>
+      <div className="title-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
+        <h1 className="page-title">Activity</h1>
       </div>
       {renderDetailedInsights()}
       <div className="history-list">
@@ -135,6 +135,7 @@ const HistoryPage: React.FC = () => {
           </div>
         ))}
       </div>
+      <NavBar />
     </div>
   );
 };

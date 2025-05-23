@@ -343,4 +343,147 @@ export const getRandomArticles = async (count: number = 3): Promise<SearchResult
     console.error('API_RANDOM_CATCH_ERROR: Error fetching or processing random articles:', error);
     return [];
   }
+};
+
+export interface DidYouKnowEntry {
+  fact: string;
+  linkedArticleTitle: string | null;
+  // We might add image/snippet for the linked article here later if fetched directly in getDidYouKnowFacts
+}
+
+export const getDidYouKnowFacts = async (limit: number = 8): Promise<DidYouKnowEntry[]> => {
+  const params = new URLSearchParams({
+    action: 'parse',
+    page: 'Template:Did you know',
+    prop: 'text',
+    format: 'json',
+    origin: '*'
+  });
+
+  try {
+    console.log("API_DYK: Fetching from:", `${WIKIPEDIA_API_URL}?${params}`);
+    const response = await fetch(`${WIKIPEDIA_API_URL}?${params}`);
+    if (!response.ok) {
+      console.error('API_DYK_ERROR: Failed to fetch Did You Know template content:', response.status, await response.text());
+      return [];
+    }
+    const data = await response.json();
+    const htmlContent = data.parse.text['*'];
+
+    if (!htmlContent) {
+      console.error('API_DYK_ERROR: No HTML content found in parse result for DYK.');
+      return [];
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    const listItems = doc.querySelectorAll('ul > li');
+
+    const processedFacts: DidYouKnowEntry[] = [];
+    const adminKeywords = [
+        'archive', 'nominate an article', 'start a new article', 'statistics',
+        'rules', 'guidelines', 'queues', 'next update', 'current time',
+        'verify', 'reset', 'purge', 'edit', 'history', 'prep area'
+    ];
+    const veryShortExactMatches = ['v', 't', 'e'];
+
+    listItems.forEach(item => {
+      if (processedFacts.length >= limit) return; // Stop processing if we've already found enough
+
+      let rawText = (item.textContent || '').trim();
+
+      if (!rawText.startsWith('... ')) {
+        if (veryShortExactMatches.includes(rawText.toLowerCase())) {
+            return;
+        }
+        if (adminKeywords.some(keyword => rawText.toLowerCase().includes(keyword) && rawText.length < 30)) {
+            return;
+        }
+        return;
+      }
+
+      let factCandidate = rawText.substring(4).trim();
+      factCandidate = factCandidate.replace(/\s*\(pictured\)/ig, '')
+                                   .replace(/\s*\(listen\)/ig, '')
+                                   .trim();
+
+      if (adminKeywords.some(keyword => factCandidate.toLowerCase().includes(keyword))) {
+        if (factCandidate.length < 50) { 
+             return;
+        }
+      }
+
+      if (veryShortExactMatches.includes(factCandidate.toLowerCase()) && factCandidate.length <= 1) {
+          return;
+      }
+      
+      if (factCandidate.length < 15) { 
+        return;
+      }
+
+      // Attempt to find the primary linked article (usually the first bolded link)
+      let linkedArticleTitle: string | null = null;
+      const firstBoldLink = item.querySelector('b a[href^="/wiki/"]');
+      if (firstBoldLink) {
+        const href = firstBoldLink.getAttribute('href');
+        if (href) {
+          const path = href.substring('/wiki/'.length);
+          // Check if it's not a special page like File: or Template:
+          if (!path.match(/^(File:|Template:|Category:|Help:|Portal:|Wikipedia:|Special:)/i)) {
+             linkedArticleTitle = decodeURIComponent(path).replace(/_/g, ' ');
+          }
+        }
+      }
+
+      processedFacts.push({ fact: factCandidate, linkedArticleTitle });
+    });
+    
+    console.log(`API_DYK: Extracted ${processedFacts.length} facts after filtering. Requested limit: ${limit}`, processedFacts);
+    // The forEach loop already respects the limit, so this slice might be redundant if logic is correct
+    // but it's a good safeguard to ensure we don't return more than requested.
+    return processedFacts.slice(0, limit); 
+
+  } catch (error) {
+    console.error('Error fetching or parsing Did You Know facts:', error);
+    return [];
+  }
+};
+
+export const getArticleExtract = async (title: string): Promise<string | null> => {
+  const params = new URLSearchParams({
+    action: 'query',
+    prop: 'extracts',
+    titles: title,
+    exintro: 'true',      // Get only content before the first section
+    explaintext: 'true',  // Get plain text, not HTML
+    format: 'json',
+    origin: '*'
+  });
+
+  try {
+    const response = await fetch(`${WIKIPEDIA_API_URL}?${params}`);
+    if (!response.ok) {
+      console.error(`API_EXTRACT_ERROR: Failed to fetch extract for "${title}":`, response.status, await response.text());
+      return null;
+    }
+    const data = await response.json();
+    const pages = data.query.pages;
+    const pageId = Object.keys(pages)[0];
+
+    if (pageId === '-1') { // Page doesn't exist
+      console.warn(`API_EXTRACT_WARN: Page "${title}" not found for extract.`);
+      return null;
+    }
+    
+    const extract = pages[pageId].extract;
+    if (extract) {
+      // Truncate if too long for a card preview
+      const maxLength = 150; // Max characters for the snippet
+      return extract.length > maxLength ? extract.substring(0, maxLength) + '...' : extract;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching article extract for "${title}":`, error);
+    return null;
+  }
 }; 

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getArticleContent, getArticleImages, ArticleImage } from '../api/wikipedia';
 import { addToHistory } from '../services/historyService';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
+import NavBar from '../components/NavBar';
 import './ArticlePage.css';
 
 const SWIPE_BACK_THRESHOLD = 75;
@@ -149,22 +150,24 @@ const ArticlePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="article-page" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+      <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
         <div className="article-loading">Loading article...</div>
+        <NavBar />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="article-page" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+      <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
         <div className="article-error">{error}</div>
+        <NavBar />
       </div>
     );
   }
 
   return (
-    <div className="article-page" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+    <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
       <button className="back-button" onClick={handleBack}>
         <svg viewBox="0 0 24 24" className="back-icon">
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
@@ -195,6 +198,7 @@ const ArticlePage: React.FC = () => {
         onClick={handleWikiLinkClick}
         dangerouslySetInnerHTML={{ __html: content }}
       />
+      <NavBar />
     </div>
   );
 };

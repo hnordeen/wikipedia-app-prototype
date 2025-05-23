@@ -1,7 +1,11 @@
 .article-page {
-  background: white;
+  padding-bottom: 80px; /* Space for fixed NavBar */
   min-height: 100vh;
-  padding-bottom: 80px;
+  box-sizing: border-box;
+  background-color: var(--app-background-color);
+  color: var(--primary-text-color);
+  line-height: 1.7;
+  -webkit-tap-highlight-color: transparent; /* For touch swipe */
   position: relative;
 }
 

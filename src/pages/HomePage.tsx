@@ -494,11 +494,15 @@ const HomePage: React.FC = () => {
   console.log("RENDER: Recommendations count:", allRecommendations.length, "CarouselIndex:", carouselCurrentIndex);
 
   return (
-    <div className="home-page" ref={homePageRef}>
-      {(loadingRecommendations && allRecommendations.length === 0) && 
-        <div className="loading-recommendations">Loading recommendations...</div>}
-      
-      {allRecommendations.length > 0 && (
+    <div ref={homePageRef} className="home-page">
+      <div className="title-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="explore-logo" />
+        <h1 className="explore-title">Explore</h1>
+      </div>
+      {loadingRecommendations && allRecommendations.length === 0 && (
+        <div className="home-loading">Curating your feed...</div>
+      )}
+      {(allRecommendations.length > 0 || !loadingRecommendations) && (
         <div className="recommendation-stream">
           <RecommendationCarousel 
             recommendations={allRecommendations} 

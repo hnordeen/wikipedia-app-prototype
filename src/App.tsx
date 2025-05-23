@@ -5,6 +5,9 @@ import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import HistoryPage from './pages/HistoryPage';
 import ArticlePage from './pages/ArticlePage';
+import { initiateDykPreload } from './services/preloadService';
+
+initiateDykPreload();
 
 const App: React.FC = () => (
   <Router basename="/wikipedia-app-prototype">

@@ -5,12 +5,21 @@
  * 3. Handling special characters
  */
 export const formatTitleForDisplay = (title: string): string => {
+  let formattedTitle: string;
   try {
-    return decodeURIComponent(title).replace(/_/g, ' ');
+    formattedTitle = decodeURIComponent(title).replace(/_/g, ' ');
   } catch (e) {
     // If decoding fails, just replace underscores
-    return title.replace(/_/g, ' ');
+    formattedTitle = title.replace(/_/g, ' ');
   }
+
+  const maxLength = 30; // Max characters for display
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  if (isMobile && formattedTitle.length > maxLength) {
+    return formattedTitle.substring(0, maxLength - 3) + '...'; // Reserve 3 chars for ellipsis
+  }
+  return formattedTitle;
 };
 
 /**

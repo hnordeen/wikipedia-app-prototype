@@ -1,11 +1,12 @@
 .home-page {
-  padding: 0.5rem 0.5rem 80px; /* Reduced top padding */
+  padding: 10px 0.5rem 80px; /* Adjusted top padding */
   background: #f8f9fa; /* Light background common in the app */
-  min-height: 100vh;
+  height: 100vh; /* Use height instead of min-height for fixed viewport */
   box-sizing: border-box;
   display: flex; 
   flex-direction: column; 
-  align-items: center; 
+  /* align-items: center; /* Remove or change to stretch if full width stream is needed */
+  /* align-items: stretch; /* Default, usually what's wanted for children width */
 }
 
 .home-page h2 {
@@ -28,16 +29,16 @@
   margin-bottom: 2rem;
 }
 
-.loading-recommendations,
+.home-loading,
 .no-recommendations,
-.no-history-for-recommendations {
+.loading-more-recommendations {
   text-align: center;
   padding: 1rem;
   color: #54595d;
   font-size: 0.9rem;
   width: 100%; 
-  max-width: 500px; 
-  margin-top: 2rem; /* Add some margin if carousel isn't there */
+  flex-shrink: 0; /* Prevent these from shrinking */
+  margin-top: 2rem; 
 }
 
 .recommendations-section {
@@ -115,7 +116,15 @@
 
 .recommendation-stream {
   width: 100%;
-  margin-bottom: 2rem; /* Space between carousels if both are present */
+  flex-grow: 1; /* Allow this to take up remaining vertical space */
+  min-height: 0; /* Important for flex children that might otherwise overflow */
+  display: flex; /* To allow carousel container to also use flex properties if needed */
+  flex-direction: column; /* Stack its children (carousel container) vertically */
+}
+
+/* Ensure .recommendation-carousel-container takes full height of .recommendation-stream */
+.recommendation-stream > .recommendation-carousel-container {
+    height: 100%;
 }
 
 .trending-stream {
@@ -129,6 +138,34 @@
   color: #333;
   margin-bottom: 0.75rem;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.title-container {
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  align-items: center; /* Center items horizontally */
+  justify-content: center; /* Center items vertically if container has height */
+  width: 100%; 
+  margin-bottom: 15px;
+  flex-shrink: 0;
+}
+
+.explore-logo {
+  width: 30px;  
+  height: 30px; 
+  margin-bottom: 5px; /* Add some space below the logo */
+}
+
+.explore-title {
+  color: var(--primary-text-color);
+  font-size: 2.25rem; 
+  font-weight: 700;   
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 0; /* Explicitly set or adjust as needed */
+  margin-bottom: 0; /* Explicitly set or adjust as needed */
+  flex-shrink: 0; 
 }
 
 /* Responsive adjustments */

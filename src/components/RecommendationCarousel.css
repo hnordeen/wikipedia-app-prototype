@@ -2,10 +2,8 @@
   position: relative;
   width: 100%;
   max-width: 500px; /* Or full width: 100vw, or a max like 600px */
-  height: calc(100vh - 180px); /* Adjust based on header/nav bar. E.g. 80vh, or calc(100vh - (header height + footer height)) */
-  /* A common pattern is to make it take available space, e.g., 70vh-80vh */
-  /* Let's try calc(100vh - 160px) to leave space for app header and some breathing room */
-  margin: 1rem auto;
+  height: 100%; /* Changed from calc to 100% to fill flex parent */
+  margin: 0 auto; /* Changed margin to 0 auto for centering if max-width is active */
   overflow: hidden; /* This is CRITICAL */
   border-radius: 10px; /* Optional */
   background-color: #111; /* Dark background if images don't load or for transitions */
