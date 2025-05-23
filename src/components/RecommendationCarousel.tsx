@@ -9,6 +9,7 @@ interface RecommendationCarouselProps {
   onNearEnd?: () => void;
   currentIndex: number; // Changed from internal state to prop
   onCurrentIndexChange: (index: number) => void; // Callback to parent
+  onReasonClick: () => void; // New prop for handling reason text click
   // swipedOutItemKey: string | null; // This might also need to be managed by parent if swipe-out animation needs to persist across nav
   // onSwipeOutComplete: () => void; // If parent manages swipedOutItemKey
 }
@@ -21,7 +22,8 @@ const RecommendationCarousel: React.FC<RecommendationCarouselProps> = ({
   recommendations, 
   onNearEnd, 
   currentIndex, // Use prop
-  onCurrentIndexChange // Use prop
+  onCurrentIndexChange, // Use prop
+  onReasonClick // Destructure new prop
 }) => {
   const touchStartY = useRef<number>(0);
   const touchEndY = useRef<number>(0);
@@ -145,7 +147,13 @@ const RecommendationCarousel: React.FC<RecommendationCarouselProps> = ({
               onClick={(e) => handlePotentialClick(e, item.recommendation.title)}
               style={{ backgroundImage: `url(${item.recommendation.images && item.recommendation.images[0].url})` }}
             >
-              <div className="because-you-read-tag">
+              <div 
+                className="because-you-read-tag"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  onReasonClick(); // Call the new handler
+                }}
+              >
                 {item.reasonText.includes(":") ? (
                   <>
                     {item.reasonText.split(":")[0]}: <em>{item.reasonText.split(":").slice(1).join(":")}</em>

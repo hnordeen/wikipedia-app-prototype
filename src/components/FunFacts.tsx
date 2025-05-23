@@ -85,27 +85,29 @@ const FunFacts: React.FC = () => {
         <div key={index} className="fun-fact">
           <p className="fact-text">{fact.text}</p>
           <div className="related-articles">
-            {fact.relatedArticles.map((article, articleIndex) => (
-              <div
-                key={articleIndex}
-                className={`article-card ${!article.thumbnail ? 'no-image' : ''}`}
-                onClick={() => handleArticleClick(article.link)}
-              >
-                {article.thumbnail && article.thumbnail.url && (
-                  <div className="article-thumbnail">
-                    <img
-                      src={article.thumbnail.url}
-                      alt={article.thumbnail.description || article.title}
-                      loading="lazy"
-                    />
+            {fact.relatedArticles.map((article, articleIndex) => {
+              return (
+                <div
+                  key={articleIndex}
+                  className={`article-card ${!article.thumbnail ? 'no-image' : ''}`}
+                  onClick={() => handleArticleClick(article.link)}
+                >
+                  {article.thumbnail && article.thumbnail.url && (
+                    <div className="article-thumbnail">
+                      <img
+                        src={article.thumbnail.url}
+                        alt={article.thumbnail.description || article.title}
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  <div className="article-content">
+                    <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
+                    <p>{article.description}</p>
                   </div>
-                )}
-                <div className="article-content">
-                <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
-                <p>{article.description}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}

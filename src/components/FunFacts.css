@@ -1,17 +1,26 @@
 .fun-facts-container {
-  padding: 24px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin: 24px auto;
+  /* display: flex; */ /* Reverted */
+  /* flex-direction: column; */ /* Reverted */
+  /* align-items: center; */ /* Reverted */
+  padding: 24px; /* Reverted */
   max-width: 800px;
+  margin: 24px auto; /* Reverted */
+  /* overflow: hidden; */ /* Reverted */
+  /* height: 100vh; */ /* Reverted */
+  /* position: relative; */ /* Reverted */
+  background: #f8f9fa; /* Reverted */
+  border-radius: 12px; /* Reverted */
 }
 
 .fun-fact {
-  margin-bottom: 32px;
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: white; /* Reverted */
+  border-radius: 12px; /* Reverted */
+  padding: 24px; /* Reverted */
+  margin-bottom: 32px; /* Reverted */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Reverted */
+  width: 100%;
+  /* overflow-y: auto; */ /* Reverted */
+  /* max-height: calc(100vh - 40px); */ /* Reverted */
 }
 
 .fun-fact:last-child {
