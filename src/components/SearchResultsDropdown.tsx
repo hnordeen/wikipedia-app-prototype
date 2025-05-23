@@ -30,7 +30,7 @@ const SearchResultsDropdown: React.FC<SearchResultsDropdownProps> = ({
               <h4>{decodeURIComponent(result.title.replace(/_/g, ' '))}</h4>
               <div 
                 className="dropdown-snippet"
-                dangerouslySetInnerHTML={{ __html: result.snippet }} 
+                dangerouslySetInnerHTML={{ __html: result.snippet || '' }}
               />
             </div>
             {result.imagesLoading ? (

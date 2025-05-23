@@ -1,0 +1,162 @@
+.home-page {
+  padding: 0.5rem 0.5rem 80px; /* Reduced top padding */
+  background: #f8f9fa; /* Light background common in the app */
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+}
+
+.home-page h2 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  text-align: center; /* Ensure title is centered */
+}
+
+.home-page p {
+  font-size: 1rem;
+  color: #54595d;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center; /* Ensure paragraph is centered */
+  margin-bottom: 2rem;
+}
+
+.loading-recommendations,
+.no-recommendations,
+.no-history-for-recommendations {
+  text-align: center;
+  padding: 1rem;
+  color: #54595d;
+  font-size: 0.9rem;
+  width: 100%; 
+  max-width: 500px; 
+  margin-top: 2rem; /* Add some margin if carousel isn't there */
+}
+
+.recommendations-section {
+  max-width: 900px;
+  margin: 2rem auto;
+}
+
+.recommendations-section h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1rem;
+  padding-left: 0.5rem; /* Align with cards if they have padding */
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.recommendation-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recommendation-thumbnail {
+  width: 100%;
+  height: 150px; /* Fixed height for thumbnails */
+  overflow: hidden;
+  background-color: #e9ecef; /* Placeholder background */
+}
+
+.recommendation-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recommendation-content {
+  padding: 0.75rem 1rem;
+  flex-grow: 1; /* Allows content to fill space if card heights vary */
+}
+
+.recommendation-content h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #212529;
+  line-height: 1.3;
+}
+
+.recommendation-snippet {
+  font-size: 0.85rem;
+  color: #495057;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Show 3 lines of snippet */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: calc(1.4em * 3); /* Approximate height for 3 lines */
+}
+
+.recommendation-stream {
+  width: 100%;
+  margin-bottom: 2rem; /* Space between carousels if both are present */
+}
+
+.trending-stream {
+  margin-top: 1rem; /* A bit of space if personalized recs are above */
+}
+
+.stream-title {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .home-page {
+    padding: 2.5rem 0.75rem 80px;
+  }
+
+  .home-page h2 {
+    font-size: 2rem;
+  }
+
+  .home-page p {
+    font-size: 0.95rem;
+  }
+
+  .recommendations-grid {
+    grid-template-columns: 1fr; /* Single column on smaller screens */
+  }
+  
+  .recommendations-section h3 {
+    font-size: 1.3rem;
+  }
+
+  .recommendation-content h4 {
+    font-size: 1rem;
+  }
+  .recommendation-snippet {
+    font-size: 0.8rem;
+  }
+} 

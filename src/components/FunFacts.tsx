@@ -101,8 +101,8 @@ const FunFacts: React.FC = () => {
                   </div>
                 )}
                 <div className="article-content">
-                  <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
-                  <p>{article.description}</p>
+                <h3>{decodeURIComponent(article.link.replace(/_/g, ' '))}</h3>
+                <p>{article.description}</p>
                 </div>
               </div>
             ))}

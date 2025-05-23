@@ -42,7 +42,7 @@ const SearchPage: React.FC = () => {
               <h2>{decodeURIComponent(result.title.replace(/_/g, ' '))}</h2>
               <div 
                 className="snippet"
-                dangerouslySetInnerHTML={{ __html: result.snippet }}
+                dangerouslySetInnerHTML={{ __html: result.snippet || '' }}
               />
               {result.images && result.images.length > 0 && (
                 <div className="result-images">
