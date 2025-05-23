@@ -11,8 +11,8 @@ const SearchBar: React.FC = () => {
   const navigate = useNavigate();
 
   // Debounce search
-  const debouncedSearch = useCallback(
-    debounce(async (searchQuery: string) => {
+  const debouncedSearch = useCallback((searchQuery: string) => {
+    const timeoutId = setTimeout(async () => {
       if (searchQuery.trim()) {
         setIsLoading(true);
         const searchResults = await searchWikipedia(searchQuery);
@@ -21,12 +21,14 @@ const SearchBar: React.FC = () => {
       } else {
         setResults([]);
       }
-    }, 300),
-    []
-  );
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
-    debouncedSearch(query);
+    const cleanup = debouncedSearch(query);
+    return cleanup;
   }, [query, debouncedSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -68,17 +70,5 @@ const SearchBar: React.FC = () => {
     </div>
   );
 };
-
-// Debounce utility function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
 
 export default SearchBar; 

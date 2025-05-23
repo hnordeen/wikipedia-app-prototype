@@ -101,7 +101,6 @@ export const getHistoryInsights = (): HistoryInsights => {
   });
   
   let currentStreak = 0;
-  let longestStreak = 0;
   let currentDate = new Date();
   let isOngoing = true;
   

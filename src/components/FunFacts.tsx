@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getArticleImages, ArticleImage } from '../api/wikipedia';
 import './FunFacts.css';
@@ -17,7 +17,7 @@ const FunFacts: React.FC = () => {
   const navigate = useNavigate();
   const [facts, setFacts] = useState<FunFact[]>([]);
 
-  const initialFunFacts: FunFact[] = [
+  const initialFunFacts = useMemo(() => [
     {
       text: "Did you know... that a stray dog named Argo visited the ruins of Pompeii daily for 15 years and was considered its 'guardian'?",
       relatedArticles: [
@@ -48,7 +48,7 @@ const FunFacts: React.FC = () => {
         }
       ]
     }
-  ];
+  ], []);
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -73,7 +73,7 @@ const FunFacts: React.FC = () => {
     };
 
     fetchImages();
-  }, []);
+  }, [initialFunFacts]);
 
   const handleArticleClick = (link: string) => {
     navigate(`/article/${encodeURIComponent(link)}`);

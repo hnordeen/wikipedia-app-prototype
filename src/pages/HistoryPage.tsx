@@ -7,7 +7,7 @@ import './HistoryPage.css';
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { groupedHistory, weeklyCount } = useHistory();
+  const { groupedHistory } = useHistory();
   const insights = getHistoryInsights();
 
   const handleArticleClick = (title: string) => {
