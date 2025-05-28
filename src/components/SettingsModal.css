@@ -1,4 +1,4 @@
-.modal-overlay {
+.s-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -8,10 +8,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1050; /* Higher than main settings modal if they could overlap */
 }
 
-.modal-content {
+.s-modal-content {
   background-color: white;
   padding: 25px;
   border-radius: 8px;
@@ -21,57 +21,143 @@
   text-align: left;
 }
 
-.modal-content h2 {
-  margin-top: 0;
+.s-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
   margin-bottom: 15px;
-  font-size: 22px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.s-modal-header h2, 
+.s-modal-header.panel-header h3 {
+  margin: 0;
+  font-size: 1.4em;
   color: #333;
 }
 
-.modal-content p {
-  margin-bottom: 20px;
-  font-size: 16px;
+.s-modal-close-button, 
+.s-modal-back-button {
+  background: none;
+  border: none;
+  font-size: 1.6em;
+  cursor: pointer;
+  color: #777;
+  padding: 0 5px;
+}
+.s-modal-close-button:hover, 
+.s-modal-back-button:hover {
+  color: #333;
+}
+
+.s-modal-back-button {
+  font-size: 1.1em;
+  font-weight: bold;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+}
+.s-modal-back-button:hover {
+    background-color: #e2e6ea;
+}
+
+/* Specific for panel mode back button, can be more subtle */
+.s-modal-back-button.panel-back-button {
+  font-size: 1em;
   color: #555;
+  border: 1px solid #ddd;
+  background-color: transparent;
+}
+.s-modal-back-button.panel-back-button:hover {
+  background-color: #f0f0f0;
+}
+
+
+.s-modal-body {
+  /* General body styles */
+}
+
+.s-modal-description {
+  font-size: 0.95em;
+  color: #555;
+  margin-bottom: 20px;
   line-height: 1.5;
 }
 
-.setting-item {
+.s-setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.setting-item:last-child {
+.s-setting-item:last-child {
   border-bottom: none;
 }
 
-.setting-item label {
-  font-size: 16px;
+.s-checkbox-label {
+  font-size: 1em;
   color: #444;
+  flex-grow: 1;
+  margin-right: 10px;
+  user-select: none;
 }
 
-.setting-item input[type="checkbox"] {
-  transform: scale(1.2);
+.s-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #3366cc; /* Wikipedia Blue */
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.close-button {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  margin-top: 25px;
-  background-color: #007bff;
+.s-modal-footer {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  text-align: right;
+}
+
+.s-modal-done-button {
+  background-color: #3366cc;
   color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 5px;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 1em;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
-.close-button:hover {
-  background-color: #0056b3;
+.s-modal-done-button:hover {
+  background-color: #2a57a8;
+}
+
+/* Panel specific styles */
+.s-modal-panel-content {
+  padding: 0;
+  background-color: transparent; /* Panel itself shouldn't have a background, relies on parent */
+}
+
+.s-modal-header.panel-header {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef; /* Lighter border for panel header */
+}
+
+.s-modal-header.panel-header h3 {
+  font-size: 1.25em; /* Consistent title size for panel */
+  font-weight: 600;
+}
+
+.s-modal-panel-content .s-modal-body {
+  padding: 0 5px; 
+}
+
+.s-modal-panel-content .s-setting-item {
+  padding: 10px 5px;
+  border-bottom: 1px solid #f5f5f5; /* Lighter item separator in panel */
 } 

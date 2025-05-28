@@ -1,15 +1,88 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
 import { useHistory } from '../hooks/useHistory';
 import { getHistoryInsights } from '../services/historyService';
+import { getReminderStatus } from '../services/reminderService';
 import NavBar from '../components/NavBar';
+import DonationModal from '../components/DonationModal';
 import './HistoryPage.css';
+
+const MIN_ARTICLES_FOR_DONATION_CTA = 5;
+const ARTICLES_BETWEEN_INITIAL_PROMPTS = 100;
+const LAST_INITIAL_PROMPT_COUNT_KEY = 'wikipediaAppLastInitialPromptArticleCount';
+// Key for the explicit setting from MainSettingsModal
+const SHOW_INITIAL_DONATION_PROMPT_SETTING_KEY = 'wikipediaAppShowInitialDonationPrompt'; 
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const { groupedHistory } = useHistory();
   const insights = getHistoryInsights();
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+
+  const totalArticlesInHistory = useMemo(() => {
+    return Object.values(groupedHistory).reduce((sum, items) => sum + items.length, 0);
+  }, [groupedHistory]);
+
+  useEffect(() => {
+    const reminderSettings = getReminderStatus();
+    const remindersGloballyEnabled = reminderSettings ? reminderSettings.reminderEnabled : false;
+
+    if (!remindersGloballyEnabled) {
+      console.log("HISTORY_PAGE: Initial prompt skipped, reminders globally disabled.");
+      return;
+    }
+
+    let explicitlyAllowFirstTimePrompt = false; // Default to false, requires explicit ON
+    try {
+      const storedAllowSetting = localStorage.getItem(SHOW_INITIAL_DONATION_PROMPT_SETTING_KEY);
+      if (storedAllowSetting !== null) {
+        explicitlyAllowFirstTimePrompt = JSON.parse(storedAllowSetting);
+      }
+    } catch (error) {
+      console.error("HISTORY_PAGE: Error reading show initial prompt setting:", error);
+    }
+
+    if (totalArticlesInHistory >= MIN_ARTICLES_FOR_DONATION_CTA && !isDonationModalOpen) {
+      if (explicitlyAllowFirstTimePrompt) {
+        console.log("HISTORY_PAGE: Triggering donation reminder modal because 'Allow First-Time Prompt' setting is ON.");
+        setIsDonationModalOpen(true);
+      } else {
+        // If explicit setting is OFF, fall back to 100-article interval logic
+        console.log("HISTORY_PAGE: 'Allow First-Time Prompt' is OFF. Checking 100-article interval.");
+        let lastPromptCount = 0;
+        try {
+          const storedCount = localStorage.getItem(LAST_INITIAL_PROMPT_COUNT_KEY);
+          if (storedCount) {
+            lastPromptCount = parseInt(storedCount, 10);
+            if (isNaN(lastPromptCount)) lastPromptCount = 0;
+          }
+        } catch (error) {
+          console.error("HISTORY_PAGE: Error reading last initial prompt article count:", error);
+          lastPromptCount = 0;
+        }
+
+        if (totalArticlesInHistory >= lastPromptCount + ARTICLES_BETWEEN_INITIAL_PROMPTS) {
+          console.log(`HISTORY_PAGE: Triggering donation reminder modal (interval). Total: ${totalArticlesInHistory}, LastPrompt: ${lastPromptCount}`);
+          setIsDonationModalOpen(true);
+        } else {
+          console.log(`HISTORY_PAGE: Initial prompt criteria not met (interval). Total: ${totalArticlesInHistory}, LastPrompt: ${lastPromptCount}, Required > ${lastPromptCount + ARTICLES_BETWEEN_INITIAL_PROMPTS -1}`);
+        }
+      }
+    }
+  }, [totalArticlesInHistory, isDonationModalOpen]);
+
+  const handleCloseDonationModal = () => {
+    setIsDonationModalOpen(false);
+    // Always update lastPromptCount, even if shown due to the explicit setting.
+    // This means if the explicit setting is later turned OFF, the 100-article count starts from this point.
+    try {
+      localStorage.setItem(LAST_INITIAL_PROMPT_COUNT_KEY, totalArticlesInHistory.toString());
+      console.log(`HISTORY_PAGE: Updated last initial prompt article count to ${totalArticlesInHistory}`);
+    } catch (error) {
+      console.error("HISTORY_PAGE: Error saving last initial prompt article count:", error);
+    }
+  };
 
   const handleArticleClick = (title: string) => {
     navigate(`/article/${formatTitleForUrl(title)}`);
@@ -76,7 +149,6 @@ const HistoryPage: React.FC = () => {
         <div className="insight-card">
           <div className="most-active-hour">{formatHour(insights.mostActiveHour.hour)}</div>
           <div className="most-active-label">Most active reading time</div>
-          {/* <div className="insight-label">({insights.mostActiveHour.count} articles)</div> */}
         </div>
       )}
     </div>
@@ -95,6 +167,11 @@ const HistoryPage: React.FC = () => {
           <p>Articles you view will appear here</p>
         </div>
         <NavBar />
+        <DonationModal 
+          isOpen={isDonationModalOpen} 
+          onClose={handleCloseDonationModal}
+          articleCount={totalArticlesInHistory}
+        />
       </div>
     );
   }
@@ -136,6 +213,11 @@ const HistoryPage: React.FC = () => {
         ))}
       </div>
       <NavBar />
+      <DonationModal 
+        isOpen={isDonationModalOpen} 
+        onClose={handleCloseDonationModal}
+        articleCount={totalArticlesInHistory}
+      />
     </div>
   );
 };

@@ -1,0 +1,228 @@
+.donation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.donation-modal-content {
+  background-color: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+}
+
+.donation-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.donation-modal-close:hover {
+  color: #333;
+}
+
+.donation-modal-content h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #202122;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.donation-modal-content p {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  color: #54595d;
+  line-height: 1.6;
+  margin-bottom: 25px;
+}
+
+.donation-modal-button-yes,
+.donation-modal-button-confirm,
+.donation-modal-later-button,
+.donation-modal-back-button {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.donation-modal-button-yes,
+.donation-modal-button-confirm {
+  background-color: #3366cc; /* Wikipedia blue */
+  color: white;
+  border: none;
+}
+
+.donation-modal-button-yes:hover,
+.donation-modal-button-confirm:hover {
+  background-color: #2a55a6;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.donation-modal-later-button,
+.donation-modal-back-button {
+  background-color: #e9ecef;
+  color: #333; /* Default for light background */
+  border: 1px solid #ced4da;
+}
+
+.donation-modal-later-button:hover,
+.donation-modal-back-button:hover {
+  background-color: #dce1e6;
+}
+
+/* Styles for Reminder Setup Form */
+.form-inputs-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start; 
+  gap: 10px; 
+  margin-bottom: 15px; 
+  flex-wrap: wrap; 
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  flex-grow: 1; /* Allow groups to grow */
+  flex-basis: 120px; /* Base width, allowing two to fit in ~250px + gap */
+  max-width: 180px; /* Max width for each input group to keep them small */
+}
+
+.input-addon {
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #495057;
+  text-align: center;
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  height: 38px; /* Match input height */
+  box-sizing: border-box;
+}
+
+.input-group .input-addon:first-child {
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.input-group .input-addon:last-child {
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.donation-input {
+  flex-grow: 1;
+  padding: 8px 10px; /* Match addon padding for consistency */
+  font-size: 0.9rem;
+  border: 1px solid #ced4da;
+  border-radius: 0;
+  box-sizing: border-box;
+  min-width: 50px; /* Smallest reasonable width */
+  width: 60px; /* Default width, can grow */
+  text-align: right;
+  height: 38px; /* Standard height */
+}
+
+.input-group > .donation-input:first-child:not(:last-child) {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+.input-group > .donation-input:last-child:not(:first-child) {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.input-group > .donation-input:only-child {
+  border-radius: 8px;
+}
+
+.dynamic-reminder-preview-text {
+  font-size: 0.95rem;
+  color: #333;
+  margin-top: 10px; 
+  margin-bottom: 20px;
+  text-align: center; 
+  font-style: italic;
+  padding: 0 10px; 
+}
+
+/* Cleanup old styles if they conflict or are unused */
+.reminder-form-text {
+ display: none; /* Hide the old text elements */
+}
+
+.reminder-form-text.mid-text {
+  display: none; /* Hide the old text elements */
+}
+
+.donation-modal-later-button {
+  background-color: #6c757d;
+  color: white; /* Added for better contrast on dark background */
+}
+
+.donation-modal-no-thanks-link {
+  display: inline-block; /* Or block if full width is desired, but inline-block fits link better */
+  background-color: transparent;
+  color: #333333; /* Dark grey for modern black text */
+  border: none;
+  padding: 8px 0; /* Reduced padding */
+  margin-top: 15px; /* Space above the link */
+  cursor: pointer;
+  text-align: center;
+  font-weight: normal; /* Standard font weight for a link */
+  font-size: 0.9rem; /* Slightly smaller font size for a subtle link */
+  width: auto; /* Allow it to size based on content */
+}
+
+.donation-modal-no-thanks-link:hover {
+  background-color: transparent; /* Ensure no background on hover */
+  color: #000000; /* Darken text on hover */
+  text-decoration: underline;
+}
+
+/* Ensure back button also has white text if its background is darkened by a more specific rule elsewhere or in future */
+.donation-modal-back-button {
+  /* If .donation-modal-back-button could also get a dark background from a specific rule, 
+     it would need 'color: white;' too. For now, we are only targeting .donation-modal-later-button 
+     explicitly as per the current issue. However, to be safe and ensure its default light background
+     uses dark text as originally intended: */
+  background-color: #e9ecef; /* Reaffirm light background */
+  color: #333; /* Reaffirm dark text for light background */
+  border: 1px solid #ced4da; /* Reaffirm border */
+}
+
+.modal-header-icon {
+  display: block;
+  width: 32px; /* Reduced size */
+  height: 32px; /* Reduced size */
+  margin: 0 auto 8px; /* Reduced bottom margin and centered */
+} 

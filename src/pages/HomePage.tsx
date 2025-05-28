@@ -4,6 +4,7 @@ import { getMoreLikeArticles, SearchResult, getTrendingArticles, getRandomArticl
 import RecommendationCarousel from '../components/RecommendationCarousel';
 import { useNavigate } from 'react-router-dom';
 import SettingsModal, { FeedSettings } from '../components/SettingsModal';
+import MainSettingsModal from '../components/MainSettingsModal';
 import './HomePage.css';
 
 // Updated RecommendationItem interface
@@ -42,6 +43,7 @@ const HomePage: React.FC = () => {
 
   // State for settings modal
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isMainSettingsModalOpen, setIsMainSettingsModalOpen] = useState(false);
   const [feedSettings, setFeedSettings] = useState<FeedSettings>(() => {
     const storedSettings = localStorage.getItem(FEED_SETTINGS_KEY);
     if (storedSettings) {
@@ -493,11 +495,42 @@ const HomePage: React.FC = () => {
   console.log("RENDER: LoadingStates:", {loadingRecommendations, isFetchingMore: isFetchingMoreRef.current});
   console.log("RENDER: Recommendations count:", allRecommendations.length, "CarouselIndex:", carouselCurrentIndex);
 
+  const openMainSettingsModal = () => {
+    setIsMainSettingsModalOpen(true);
+  };
+
+  const closeMainSettingsModal = () => {
+    setIsMainSettingsModalOpen(false);
+  };
+
+  const openFeedSettingsModal = () => {
+    setIsSettingsModalOpen(true);
+  };
+
+  const closeFeedSettingsModal = () => {
+    setIsSettingsModalOpen(false);
+  };
+
+  const handleNavigateToFeedSettings = () => {
+    closeMainSettingsModal();
+    openFeedSettingsModal();
+  };
+
+  // Renamed from handleOpenSettingsModal to be more specific
+  const handleReasonClickToOpenFeedSettings = () => {
+    openFeedSettingsModal();
+  };
+
   return (
     <div ref={homePageRef} className="home-page">
       <div className="title-container">
         <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="explore-logo" />
         <h1 className="explore-title">Explore</h1>
+        <button onClick={openMainSettingsModal} className="main-settings-button" aria-label="Open settings">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
+            <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.23 C14.34,2.01,14.13,1.86,13.89,1.86h-3.78c-0.24,0-0.45,0.15-0.5,0.37L9.22,4.65C8.63,4.89,8.1,5.21,7.6,5.59L5.21,4.63 C4.99,4.56,4.74,4.62,4.62,4.84l-1.92,3.32C2.58,8.39,2.64,8.66,2.82,8.8l2.03,1.58C4.8,10.7,4.78,11.02,4.78,11.34 c0,0.32,0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22 l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.39,2.42c0.05,0.22,0.26,0.37,0.5,0.37h3.78c0.24,0,0.45-0.15,0.5-0.37l0.39-2.42 c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0.02,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61 L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+          </svg>
+        </button>
       </div>
       {loadingRecommendations && allRecommendations.length === 0 && (
         <div className="home-loading">Curating your feed...</div>
@@ -509,7 +542,7 @@ const HomePage: React.FC = () => {
             onNearEnd={handleOnNearEnd}
             currentIndex={carouselCurrentIndex} 
             onCurrentIndexChange={handleCarouselIndexChange} 
-            onReasonClick={handleOpenSettingsModal} // Pass handler to open modal
+            onReasonClick={handleReasonClickToOpenFeedSettings}
           />
         </div>
       )}
@@ -520,6 +553,13 @@ const HomePage: React.FC = () => {
         settings={feedSettings}
         onSettingsChange={handleSettingsChange}
         onClose={handleCloseSettingsModal}
+      />
+
+      <MainSettingsModal
+        isOpen={isMainSettingsModalOpen}
+        onClose={closeMainSettingsModal}
+        feedSettings={feedSettings}
+        onFeedSettingsChange={handleSettingsChange}
       />
 
       {(isFetchingMoreRef.current && allRecommendations.length > 0) && (

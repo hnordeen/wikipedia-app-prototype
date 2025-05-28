@@ -1,0 +1,218 @@
+.drp-modal-overlay {
+  position: fixed;
+  bottom: 90px; /* Further increased to ensure it's above NavBar */
+  left: 0;
+  right: 0;
+  top: auto; /* Override default top:0 */
+  display: flex;
+  justify-content: center; /* Center the toast content horizontally */
+  align-items: flex-end; /* Align toast to the bottom of this container */
+  background-color: transparent; /* Overlay is transparent */
+  z-index: 10000; /* Higher than NavBar (9999) */
+  padding: 0 10px; /* Add horizontal padding for overlay to contain toast better on small screens */
+  pointer-events: none; /* Allow clicks to pass through overlay */
+}
+
+.drp-header-icon {
+  width: 20px; /* Smaller for inline with title */
+  height: 20px;
+  margin-right: 8px; /* Space between icon and title text */
+  flex-shrink: 0; 
+}
+
+.drp-icon-and-text-wrapper {
+  display: flex;
+  align-items: flex-start; /* Align icon to the top of the text block */
+  flex-grow: 1; /* Allow this wrapper to take available space */
+}
+
+.drp-modal-content {
+  background-color: #ffffff; /* Wikipedia-like white background */
+  color: #202122; /* Default dark text color */
+  padding: 12px 15px; /* Slightly reduced padding */
+  border-radius: 8px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15); /* Adjusted shadow for light bg */
+  border-top: 1px solid #a2a9b1; /* Subtle top border */
+  text-align: left; /* Align text to the left */
+  max-width: 550px; /* Max width for the toast */
+  width: 100%; /* Toast takes full width of padded overlay */
+  pointer-events: auto; /* Toast itself is interactive */
+  display: flex;
+  /* Changed to row to align text and button group horizontally */
+  flex-direction: row;
+  align-items: center; /* Vertically align items in the row */
+  justify-content: space-between; /* Space out text and button group */
+  gap: 12px; /* Slightly reduced gap */
+  position: relative; /* For absolute positioning of the close button */
+  padding-top: 30px; /* Add padding to top to make space for close button */
+}
+
+.drp-text-content {
+  flex-grow: 1; /* Allow text content to take available space */
+}
+
+.drp-modal-content h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1.05rem; /* Adjusted */
+  font-weight: 600;
+  color: #202122; /* Wikipedia dark heading color */
+  margin-top: 0; /* Remove top margin if icon dictates top alignment */
+  margin-bottom: 3px; /* Minimal margin */
+  line-height: 1.2; /* Adjust line height if needed for alignment with icon */
+}
+
+.drp-modal-content p {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.85rem; /* Adjusted */
+  color: #54595d; /* Wikipedia secondary text color */
+  line-height: 1.4;
+  margin-bottom: 0; /* No margin as it's in a flex row */
+}
+
+.drp-button-group {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Reduced gap */
+  flex-shrink: 0; /* Prevent button group from shrinking */
+}
+
+/* Common styles for Donate and Snooze buttons */
+.drp-modal-button-donate,
+.drp-modal-button-later {
+  padding: 7px 10px; /* Adjusted padding */
+  font-size: 0.85rem; /* Adjusted font size */
+  font-weight: 500;
+  border-radius: 5px; /* Slightly smaller radius */
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  margin-bottom: 0; /* Remove bottom margin from previous style */
+  width: auto; /* Buttons size to content */
+  display: inline-block; /* Align them in a row */
+  line-height: 1.2; /* Ensure text/icon is vertically centered */
+}
+
+.drp-modal-button-donate {
+  background-color: #3366cc; /* Wikipedia blue */
+  color: white;
+  border: 1px solid #3366cc; /* Matching border */
+}
+
+.drp-modal-button-donate:hover {
+  background-color: #2a55a6; /* Darker Wikipedia blue */
+  border-color: #2a55a6;
+}
+
+.drp-modal-button-donate:disabled {
+  background-color: #c8ccd1; /* Lighter grey for disabled */
+  color: #72777d;
+  border-color: #c8ccd1;
+  cursor: not-allowed;
+}
+
+.drp-modal-button-later {
+  background-color: #eaecf0; /* Wikimedia UI light gray */
+  color: #202122; /* Dark text */
+  border: 1px solid #a2a9b1; /* Medium gray border */
+}
+
+.drp-modal-button-later:hover {
+  background-color: #dde1e6; /* Slightly darker gray on hover */
+  border-color: #888f99;
+}
+
+/* New styles for the X close button, positioned top-right */
+.drp-modal-button-close {
+  position: absolute;
+  top: 8px; 
+  right: 8px; /* Changed from left to right */
+  left: auto; /* Ensure left is not set */
+  background-color: transparent;
+  color: #54595d; 
+  border: none;
+  font-size: 1.8rem; 
+  font-weight: normal; 
+  line-height: 1; 
+  padding: 5px; 
+  width: 30px; 
+  height: 30px; 
+  display: flex; 
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%; 
+  transition: background-color 0.2s ease, color 0.2s ease;
+  z-index: 1; 
+}
+
+.drp-modal-button-close:hover {
+  background-color: #f0f0f0; 
+  color: #202122; 
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 500px) {
+  .drp-modal-overlay {
+    bottom: 90px; /* Consistent increased bottom spacing */
+    padding: 0 8px; /* Tighter padding for the overlay */
+  }
+
+  .drp-icon-and-text-wrapper {
+    flex-direction: column; /* Stack icon and text block on mobile */
+    align-items: center; /* Center items when stacked */
+  }
+
+  .drp-header-icon {
+    /* display: block; -- this is default for img */
+    margin: 0 auto 5px; /* Center it above the stacked text, remove right margin */
+    width: 24px; 
+    height: 24px;
+  }
+
+  .drp-modal-content {
+    flex-direction: column;
+    align-items: stretch; 
+    text-align: center; 
+    padding: 10px;
+    padding-top: 40px; /* Ensure enough space for top-right close button */
+    gap: 8px;
+  }
+
+  .drp-text-content {
+    margin-bottom: 8px; 
+    text-align: center; /* Ensure text within text-content is also centered */
+  }
+  
+  .drp-modal-content h2 {
+    font-size: 1rem;
+    margin-top: 0; /* Reset for stacked view */
+  }
+
+  .drp-modal-content p {
+    font-size: 0.8rem;
+  }
+
+  .drp-button-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px; /* Tighter gap for stacked buttons */
+  }
+
+  .drp-modal-button-close {
+    top: 5px; 
+    right: 5px; /* Changed from left to right for mobile */
+    left: auto; /* Ensure left is not set for mobile */
+    width: 36px; 
+    height: 36px;
+    font-size: 2rem;
+  }
+
+  /* Donate and Snooze buttons are now full width on mobile */
+  .drp-modal-button-donate,
+  .drp-modal-button-later {
+    width: 100%; 
+    padding: 10px 12px; 
+    font-size: 0.9rem;
+  }
+  /* The close button is NOT part of this group anymore for mobile full-width */
+} 

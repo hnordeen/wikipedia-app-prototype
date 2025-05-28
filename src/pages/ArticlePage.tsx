@@ -4,6 +4,8 @@ import { getArticleContent, getArticleImages, ArticleImage } from '../api/wikipe
 import { addToHistory } from '../services/historyService';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
 import NavBar from '../components/NavBar';
+import DonationReminderPrompt from '../components/DonationReminderPrompt';
+import { incrementArticleViewCount, checkShouldShowReminder, resetReminderCounter, snoozeReminder, disableReminder, getReminderStatus } from '../services/reminderService';
 import './ArticlePage.css';
 
 const SWIPE_BACK_THRESHOLD = 75;
@@ -17,6 +19,10 @@ const ArticlePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showDonationPrompt, setShowDonationPrompt] = useState(false);
+  const [donationPromptDetails, setDonationPromptDetails] = useState<{ amount?: string; frequency?: string; url?: string }>({});
+  const articleLoadedRef = useRef(false);
+
   const touchStartXRef = useRef<number>(0);
   const touchEndXRef = useRef<number>(0);
   const touchStartYRef = useRef<number>(0);
@@ -25,6 +31,7 @@ const ArticlePage: React.FC = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    articleLoadedRef.current = false;
   }, [title]);
 
   const handleBack = () => {
@@ -95,6 +102,28 @@ const ArticlePage: React.FC = () => {
           firstParagraph,
           articleImages.length > 0 ? articleImages[0] : undefined
         );
+
+        if (!articleLoadedRef.current) {
+          const reminderStatus = getReminderStatus();
+          if (reminderStatus && reminderStatus.reminderEnabled) {
+            console.log("ARTICLE_PAGE: Incrementing article view count.");
+            await incrementArticleViewCount();
+            const reminderCheck = await checkShouldShowReminder();
+            if (reminderCheck.show) {
+              console.log("ARTICLE_PAGE: Showing donation reminder prompt.", reminderCheck);
+              setDonationPromptDetails({ 
+                amount: reminderCheck.amount, 
+                frequency: reminderCheck.frequency, 
+                url: reminderCheck.url 
+              });
+              setShowDonationPrompt(true);
+            } else {
+              console.log("ARTICLE_PAGE: Not showing reminder prompt.", reminderCheck, getReminderStatus());
+            }
+          }
+          articleLoadedRef.current = true; 
+        }
+
       } catch (err) {
         setError('Failed to load article');
         console.error('Error loading article:', err);
@@ -105,6 +134,24 @@ const ArticlePage: React.FC = () => {
 
     fetchArticle();
   }, [title]);
+
+  const handleCloseDonationPrompt = async (action: 'donate' | 'snooze' | 'disable' | 'close') => {
+    setShowDonationPrompt(false);
+    setDonationPromptDetails({});
+    const reminderStatus = getReminderStatus();
+    if (!reminderStatus || !reminderStatus.reminderEnabled) return;
+
+    if (action === 'donate' || action === 'close') {
+      console.log("ARTICLE_PAGE: Resetting reminder counter due to action:", action);
+      await resetReminderCounter();
+    } else if (action === 'snooze') {
+      console.log("ARTICLE_PAGE: Snoozing reminder.");
+      await snoozeReminder();
+    } else if (action === 'disable') {
+      console.log("ARTICLE_PAGE: Disabling reminder permanently.");
+      await disableReminder();
+    }
+  };
 
   const processWikipediaContent = (htmlContent: string): string => {
     const tempDiv = document.createElement('div');
@@ -199,6 +246,13 @@ const ArticlePage: React.FC = () => {
         dangerouslySetInnerHTML={{ __html: content }}
       />
       <NavBar />
+      <DonationReminderPrompt 
+        isOpen={showDonationPrompt}
+        onClose={handleCloseDonationPrompt}
+        amount={donationPromptDetails.amount}
+        frequency={donationPromptDetails.frequency}
+        donationUrl={donationPromptDetails.url}
+      />
     </div>
   );
 };

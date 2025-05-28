@@ -82,6 +82,9 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   text-align: center;
   position: relative; /* For badge positioning */
+  display: flex; /* Added for vertical centering of button/text */
+  flex-direction: column; /* Added for vertical centering */
+  justify-content: center; /* Added for vertical centering */
 }
 
 .insight-value, .most-active-hour {
@@ -215,6 +218,29 @@
 
 .history-empty p {
   font-size: 0.95rem;
+}
+
+/* Styles for the CTA card and button */
+.insight-card-cta {
+  background-color: #e6f3ff; /* Light blue, or another distinct color */
+}
+
+.donation-cta-button {
+  background-color: #3366cc; /* Wikipedia blue */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-bottom: 5px; /* Space between button and label */
+}
+
+.donation-cta-button:hover {
+  background-color: #2a55a6;
 }
 
 @media (max-width: 600px) {
