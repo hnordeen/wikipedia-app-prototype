@@ -22,13 +22,15 @@ const LinkQuestPage: React.FC = () => {
   const feedbackRef = useRef<{ correct: boolean; linkContext?: string; linkContextTitle?: string; linkSectionHeading?: string; isComplete?: boolean; cardTitle?: string; isLinked?: boolean; answerToCommit?: boolean } | null>(null);
   const [isSwipingAway, setIsSwipingAway] = useState(false);
   const [previewNextCard, setPreviewNextCard] = useState<GameCard | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const cardRef = useRef<HTMLDivElement>(null);
+  const cardHeightRef = useRef<number | null>(null);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const cardOffsetX = useRef<number>(0);
   const cardOffsetY = useRef<number>(0);
-  const isDragging = useRef<boolean>(false);
+  const isDraggingRef = useRef<boolean>(false);
 
   const dateKeyUTC = getUtcDateKey();
   
@@ -101,6 +103,42 @@ const LinkQuestPage: React.FC = () => {
   }, [gameState.currentCardIndex, showFeedback, isSwipingAway]);
 
   const currentCard = game?.cards[gameState.currentCardIndex];
+
+  // Measure and set consistent card height
+  useEffect(() => {
+    if (cardRef.current && currentCard && !showFeedback && !isSwipingAway) {
+      // Use a small delay to ensure content is rendered
+      const timeoutId = setTimeout(() => {
+        if (cardRef.current) {
+          const card = cardRef.current;
+          // Temporarily remove height constraint to measure natural height
+          const originalHeight = card.style.height;
+          card.style.height = 'auto';
+          
+          // Measure the natural height
+          const naturalHeight = card.offsetHeight;
+          
+          // If we have a stored height, use the maximum of stored and current
+          // This ensures all cards match the tallest card in the session
+          if (cardHeightRef.current === null || naturalHeight > cardHeightRef.current) {
+            cardHeightRef.current = naturalHeight;
+          }
+          
+          // Set all cards to the same height (tallest card) using CSS variable
+          // This applies to both current card and stack cards
+          const cardContainer = card.closest('.linkquest-card-container');
+          if (cardContainer) {
+            (cardContainer as HTMLElement).style.setProperty('--card-height', `${cardHeightRef.current}px`);
+          }
+          
+          // Also set directly on the card
+          card.style.height = `${cardHeightRef.current}px`;
+        }
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentCard, showFeedback, isSwipingAway]);
   // Get next card based on current index (before it advances)
   const nextCardIndex = gameState.currentCardIndex + 1;
   const nextCard = game && nextCardIndex < game.cards.length 
@@ -121,7 +159,7 @@ const LinkQuestPage: React.FC = () => {
     
     const isCorrect = isLinked === cardBeingSwiped.isLinked;
     
-    // Create new answers array (but don't commit yet - wait for continue button)
+    // Create new answers array and commit immediately (no feedback screen)
     const newAnswers = [...gameState.answers];
     newAnswers[currentIndex] = isCorrect;
     
@@ -132,26 +170,17 @@ const LinkQuestPage: React.FC = () => {
     const totalAnswered = newAnswers.filter(a => a !== undefined).length;
     const willBeComplete = totalAnswered >= game.cards.length && newSkippedIndices.length === 0;
     
-    // Prepare feedback data BEFORE state update
-    // Store the answer in feedback data so we can commit it when continue is pressed
-    const feedbackData = {
-      correct: isCorrect,
-      linkContext: cardBeingSwiped.isLinked ? cardBeingSwiped.linkContext : undefined,
-      linkContextTitle: cardBeingSwiped.isLinked ? cardBeingSwiped.linkContextTitle : undefined,
-      linkSectionHeading: cardBeingSwiped.isLinked ? cardBeingSwiped.linkSectionHeading : undefined,
-      isComplete: willBeComplete,
-      cardTitle: cardBeingSwiped.title,
-      isLinked: cardBeingSwiped.isLinked,
-      answerToCommit: isCorrect // Store the answer to commit when continue is pressed
-    };
+    // Calculate next index (but don't update state yet - wait for animation)
+    let nextIndex = currentIndex + 1;
+    if (nextIndex >= game.cards.length && newSkippedIndices.length > 0) {
+      // Find the first skipped card that hasn't been answered
+      const firstSkipped = newSkippedIndices.find(idx => newAnswers[idx] === undefined);
+      if (firstSkipped !== undefined) {
+        nextIndex = firstSkipped;
+      }
+    }
     
-    // Store feedback data in ref immediately (but don't show yet)
-    feedbackRef.current = feedbackData;
-    
-    // Don't set showFeedback yet - wait until card animation completes
-    // This ensures the article card stays on top during swipe
-    
-    // Animate card away first
+    // Animate card away first - keep current card visible during animation
     setIsSwipingAway(true);
     
     if (cardRef.current) {
@@ -163,46 +192,48 @@ const LinkQuestPage: React.FC = () => {
       cardRef.current.style.opacity = '0';
     }
     
-    // Advance card index (but DON'T update answers yet - wait for continue button)
-    // If we've gone through all cards, loop back to first skipped card
-    let nextIndex = currentIndex + 1;
-    if (nextIndex >= game.cards.length && newSkippedIndices.length > 0) {
-      // Find the first skipped card that hasn't been answered
-      const firstSkipped = newSkippedIndices.find(idx => newAnswers[idx] === undefined);
-      if (firstSkipped !== undefined) {
-        nextIndex = firstSkipped;
-      }
-    }
-    
-    const newState: GameState = {
+    // Save answer immediately but DON'T update currentCardIndex yet
+    const partialState: GameState = {
       ...gameState,
       skippedIndices: newSkippedIndices,
-      // Don't update answers here - will be updated when continue is pressed
-      currentCardIndex: nextIndex,
-      isComplete: willBeComplete
+      answers: newAnswers, // Commit answer immediately
+      // Keep currentCardIndex the same for now
+      isComplete: false // Will be updated after animation
     };
     
-    // Save state immediately so it's available when dismissing feedback
-    setGameState(newState);
-    saveGameState(dateKeyUTC, newState);
+    // Save partial state (without card index update)
+    saveGameState(dateKeyUTC, partialState);
     
-    // After card animation completes, reset swipe state and show feedback
+    // After card animation completes, update card index and check if game is complete
     setTimeout(() => {
-      console.log('Card animation complete, showing feedback');
       setIsSwipingAway(false);
       setPreviewNextCard(null);
       
-      // Now show the feedback card
-      setShowFeedback(feedbackData);
+      // Now update the card index
+      const finalState: GameState = {
+        ...partialState,
+        currentCardIndex: nextIndex,
+        isComplete: willBeComplete
+      };
       
-      // Reset card position for next card (only if not complete)
-      if (cardRef.current && !willBeComplete) {
+      setGameState(finalState);
+      saveGameState(dateKeyUTC, finalState);
+      
+      // If game is complete, navigate to results immediately
+      if (willBeComplete) {
+        const result = calculateResult(game, finalState);
+        navigate('/games/linkquest/results', { state: { result, game } });
+        return;
+      }
+      
+      // Reset card position for next card
+      if (cardRef.current) {
         cardRef.current.style.transition = '';
         cardRef.current.style.transform = '';
         cardRef.current.style.opacity = '1';
       }
     }, 300);
-  }, [game, currentCard, gameState, showFeedback, isSwipingAway, dateKeyUTC]);
+  }, [game, currentCard, gameState, showFeedback, isSwipingAway, dateKeyUTC, navigate]);
 
   const handleSkip = useCallback(() => {
     if (!game || !currentCard || showFeedback || isSwipingAway) {
@@ -248,6 +279,15 @@ const LinkQuestPage: React.FC = () => {
     setGameState(newState);
     saveGameState(dateKeyUTC, newState);
     
+    // If game is complete, navigate to results
+    if (willBeComplete && game) {
+      setTimeout(() => {
+        const result = calculateResult(game, newState);
+        navigate('/games/linkquest/results', { state: { result, game } });
+      }, 300);
+      return;
+    }
+    
     // Animate card away (simple fade out)
     if (cardRef.current) {
       cardRef.current.style.transition = 'opacity 0.3s ease';
@@ -260,14 +300,14 @@ const LinkQuestPage: React.FC = () => {
         }
       }, 300);
     }
-  }, [game, currentCard, gameState, showFeedback, isSwipingAway, dateKeyUTC]);
+  }, [game, currentCard, gameState, showFeedback, isSwipingAway, dateKeyUTC, navigate]);
 
   // Touch handlers for swipe
   const handleTouchStart = (e: React.TouchEvent) => {
     if (showFeedback || isSwipingAway || !cardRef.current) return;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
+    isDraggingRef.current = false;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -279,7 +319,10 @@ const LinkQuestPage: React.FC = () => {
     const deltaY = touchY - touchStartY.current;
     
     if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-      isDragging.current = true;
+      if (!isDraggingRef.current) {
+        isDraggingRef.current = true;
+        setIsDragging(true);
+      }
       cardOffsetX.current = deltaX;
       cardOffsetY.current = deltaY;
       
@@ -296,7 +339,7 @@ const LinkQuestPage: React.FC = () => {
     
     const threshold = 100;
     
-    if (Math.abs(cardOffsetX.current) > threshold && isDragging.current) {
+    if (Math.abs(cardOffsetX.current) > threshold && isDraggingRef.current) {
       // Swipe detected
       if (cardOffsetX.current > 0) {
         handleSwipe(true); // Swipe right = linked
@@ -313,7 +356,8 @@ const LinkQuestPage: React.FC = () => {
     
     cardOffsetX.current = 0;
     cardOffsetY.current = 0;
-    isDragging.current = false;
+    isDraggingRef.current = false;
+    setIsDragging(false);
   };
 
   // Mouse handlers for desktop
@@ -324,7 +368,10 @@ const LinkQuestPage: React.FC = () => {
     const deltaY = e.clientY - touchStartY.current;
     
     if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-      isDragging.current = true;
+      if (!isDraggingRef.current) {
+        isDraggingRef.current = true;
+        setIsDragging(true);
+      }
       cardOffsetX.current = deltaX;
       cardOffsetY.current = deltaY;
       
@@ -349,7 +396,7 @@ const LinkQuestPage: React.FC = () => {
     
     const threshold = 100;
     
-    if (Math.abs(cardOffsetX.current) > threshold && isDragging.current) {
+    if (Math.abs(cardOffsetX.current) > threshold && isDraggingRef.current) {
       if (cardOffsetX.current > 0) {
         handleSwipe(true);
       } else {
@@ -364,7 +411,8 @@ const LinkQuestPage: React.FC = () => {
     
     cardOffsetX.current = 0;
     cardOffsetY.current = 0;
-    isDragging.current = false;
+    isDraggingRef.current = false;
+    setIsDragging(false);
     
     if (mouseMoveHandlerRef.current) {
       document.removeEventListener('mousemove', mouseMoveHandlerRef.current);
@@ -379,7 +427,8 @@ const LinkQuestPage: React.FC = () => {
     e.preventDefault();
     touchStartX.current = e.clientX;
     touchStartY.current = e.clientY;
-    isDragging.current = false;
+    isDraggingRef.current = false;
+    setIsDragging(false);
     
     // Store handlers in refs
     mouseMoveHandlerRef.current = handleMouseMoveGlobal;
@@ -512,8 +561,8 @@ const LinkQuestPage: React.FC = () => {
               <div className="linkquest-card-stack">
                 {remainingCards.map((card, i) => {
                   const rotation = getRotation(i);
-                  const isNextCard = i === 0 && isSwipingAway;
-                  // Only show next card when swiping
+                  const isNextCard = i === 0 && (isDragging || isSwipingAway);
+                  // Show next card preview while dragging or swiping current card
                   const shouldShow = isNextCard;
                   return (
                     <div 
@@ -527,31 +576,25 @@ const LinkQuestPage: React.FC = () => {
                       }}
                     >
                       <div className="linkquest-card-main">
-                        {card.thumbnail ? (
+                        {card.thumbnail && (
                           <img 
                             src={card.thumbnail.url} 
                             alt={card.title}
                             className="linkquest-card-image"
                           />
-                        ) : (
-                          <div className="linkquest-card-placeholder">
-                            <div className="linkquest-skeleton-wikipedia">
-                              <div className="skeleton-image"></div>
-                              <div className="skeleton-content">
-                                <div className="skeleton-line skeleton-title"></div>
-                                <div className="skeleton-line skeleton-text"></div>
-                                <div className="skeleton-line skeleton-text short"></div>
-                              </div>
-                            </div>
-                          </div>
                         )}
                         <div className="linkquest-card-content">
                           <h3 className="linkquest-card-title">
-                            {formatTitleForDisplay(card.title)}
+                            {formatTitleForDisplay(card.title, false)}
                           </h3>
                           {card.description && (
                             <p className="linkquest-card-subtitle">
                               {decodeHtmlEntities(card.description)}
+                            </p>
+                          )}
+                          {!card.thumbnail && card.extract && (
+                            <p className="linkquest-card-extract">
+                              {decodeHtmlEntities(card.extract)}
                             </p>
                           )}
                         </div>
@@ -699,31 +742,25 @@ const LinkQuestPage: React.FC = () => {
             onMouseDown={handleMouseDown}
           >
             <div className="linkquest-card-main">
-              {currentCard.thumbnail ? (
+              {currentCard.thumbnail && (
                 <img 
                   src={currentCard.thumbnail.url} 
                   alt={currentCard.title}
                   className="linkquest-card-image"
                 />
-              ) : (
-                <div className="linkquest-card-placeholder">
-                  <div className="linkquest-skeleton-wikipedia">
-                    <div className="skeleton-image"></div>
-                    <div className="skeleton-content">
-                      <div className="skeleton-line skeleton-title"></div>
-                      <div className="skeleton-line skeleton-text"></div>
-                      <div className="skeleton-line skeleton-text short"></div>
-                    </div>
-                  </div>
-                </div>
               )}
               <div className="linkquest-card-content">
                 <h3 className="linkquest-card-title">
-                  {formatTitleForDisplay(currentCard.title)}
+                  {formatTitleForDisplay(currentCard.title, false)}
                 </h3>
                 {currentCard.description && (
                   <p className="linkquest-card-subtitle">
                     {decodeHtmlEntities(currentCard.description)}
+                  </p>
+                )}
+                {!currentCard.thumbnail && currentCard.extract && (
+                  <p className="linkquest-card-extract">
+                    {decodeHtmlEntities(currentCard.extract)}
                   </p>
                 )}
               </div>

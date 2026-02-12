@@ -14,7 +14,7 @@ export const decodeHtmlEntities = (text: string): string => {
  * 3. Decoding HTML entities
  * 4. Handling special characters
  */
-export const formatTitleForDisplay = (title: string): string => {
+export const formatTitleForDisplay = (title: string, allowTruncation: boolean = true): string => {
   let formattedTitle: string;
   try {
     formattedTitle = decodeURIComponent(title).replace(/_/g, ' ');
@@ -26,11 +26,14 @@ export const formatTitleForDisplay = (title: string): string => {
   // Decode HTML entities
   formattedTitle = decodeHtmlEntities(formattedTitle);
 
-  const maxLength = 30; // Max characters for display
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // Only truncate if explicitly allowed (for backward compatibility with other pages)
+  if (allowTruncation) {
+    const maxLength = 30; // Max characters for display
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  if (isMobile && formattedTitle.length > maxLength) {
-    return formattedTitle.substring(0, maxLength - 3) + '...'; // Reserve 3 chars for ellipsis
+    if (isMobile && formattedTitle.length > maxLength) {
+      return formattedTitle.substring(0, maxLength - 3) + '...'; // Reserve 3 chars for ellipsis
+    }
   }
   return formattedTitle;
 };

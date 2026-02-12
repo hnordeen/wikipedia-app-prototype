@@ -60,7 +60,7 @@
 }
 
 .linkquest-results-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0;
   color: #1a1a1a;
@@ -101,7 +101,7 @@
 }
 
 .linkquest-results-score-text {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a1a1a;
   margin-top: 8px;
@@ -252,18 +252,19 @@
 /* Featured article - reuse styles from gameplay */
 .linkquest-results-page .linkquest-featured {
   background: white;
-  margin: 0 0 24px 0;
-  padding: 10px;
+  margin: 0 auto 24px;
+  padding: 12px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: relative;
   flex-shrink: 0;
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
 }
 
 .linkquest-results-page .linkquest-featured-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  display: inline-block;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -272,7 +273,8 @@
   background: #f3f4f6;
   color: #4b5563;
   font-weight: 600;
-  z-index: 10;
+  margin-bottom: 8px;
+  width: fit-content;
 }
 
 .linkquest-results-page .linkquest-featured-main {
@@ -295,11 +297,10 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  padding-right: 100px; /* Space for badge */
 }
 
 .linkquest-results-page .linkquest-featured-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   margin: 0;
   color: #1a1a1a;
@@ -307,7 +308,7 @@
 }
 
 .linkquest-results-page .linkquest-featured-description {
-  font-size: 13px;
+  font-size: 15px;
   color: #666;
   line-height: 1.5;
   margin: 0;
@@ -335,6 +336,10 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .linkquest-linked-article-image {
@@ -348,7 +353,7 @@
 }
 
 .linkquest-linked-article-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   margin: 0 0 12px 0;
   color: #1a1a1a;
@@ -366,7 +371,7 @@
 }
 
 .linkquest-linked-article-snippet {
-  font-size: 15px;
+  font-size: 16px;
   color: #666;
   line-height: 1.5;
   margin: 0;
@@ -427,6 +432,10 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .linkquest-unlinked-article-image {
@@ -440,7 +449,7 @@
 }
 
 .linkquest-unlinked-article-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   margin: 0 0 12px 0;
   color: #1a1a1a;
@@ -470,8 +479,307 @@
 }
 
 .linkquest-unlinked-article-snippet {
-  font-size: 15px;
+  font-size: 16px;
   color: #666;
   line-height: 1.6;
   margin: 0;
+}
+
+/* Responsive Design - Tablet and below */
+@media (max-width: 768px) {
+  .linkquest-results-page {
+    padding: 12px 12px 70px;
+  }
+
+  .linkquest-results-close {
+    width: 36px;
+    height: 36px;
+    top: 12px;
+    right: 12px;
+    font-size: 16px;
+  }
+
+  .linkquest-results-container {
+    padding: 16px 12px;
+  }
+
+  .linkquest-results-score-section {
+    padding: 18px;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  .linkquest-results-title {
+    font-size: 24px;
+  }
+
+  .linkquest-results-score-text {
+    font-size: 18px;
+  }
+
+  .linkquest-featured-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .linkquest-featured-thumbnail {
+    height: 200px;
+  }
+
+  .linkquest-featured-name {
+    font-size: 18px;
+  }
+
+  .linkquest-section-title {
+    font-size: 15px;
+  }
+
+  .linkquest-linked-article-image,
+  .linkquest-unlinked-article-image {
+    height: 180px;
+  }
+
+  .linkquest-linked-article-content,
+  .linkquest-unlinked-article-content {
+    padding: 14px;
+  }
+
+  .linkquest-linked-article-title,
+  .linkquest-unlinked-article-title {
+    font-size: 20px;
+  }
+
+  .linkquest-linked-article-snippet,
+  .linkquest-unlinked-article-snippet {
+    font-size: 15px;
+  }
+
+  .linkquest-results-page .linkquest-featured {
+    margin: 0 0 20px 0;
+    padding: 8px;
+  }
+
+  .linkquest-results-page .linkquest-featured-image {
+    width: 80px;
+    height: 60px;
+  }
+
+  .linkquest-results-page .linkquest-featured-title {
+    font-size: 18px;
+  }
+
+  .linkquest-results-page .linkquest-featured-description {
+    font-size: 14px;
+  }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .linkquest-results-page {
+    padding: 10px 10px 60px;
+  }
+
+  .linkquest-results-close {
+    width: 32px;
+    height: 32px;
+    top: 10px;
+    right: 10px;
+    font-size: 14px;
+  }
+
+  .linkquest-results-container {
+    padding: 12px 10px;
+  }
+
+  .linkquest-results-score-section {
+    padding: 14px;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .linkquest-results-title {
+    font-size: 22px;
+  }
+
+  .linkquest-results-score-text {
+    font-size: 17px;
+  }
+
+  .linkquest-results-score-tracker {
+    padding: 5px 8px;
+    gap: 5px;
+  }
+
+  .linkquest-results-score-dot {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+  }
+
+  .linkquest-featured-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .linkquest-featured-thumbnail {
+    height: 160px;
+    margin-bottom: 12px;
+  }
+
+  .linkquest-featured-name {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .linkquest-pull-quote {
+    padding: 12px;
+    margin-top: 12px;
+  }
+
+  .linkquest-quote-text {
+    font-size: 14px;
+  }
+
+  .linkquest-section-title {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .linkquest-linked-articles-section,
+  .linkquest-unlinked-articles-section {
+    margin-top: 16px;
+  }
+
+  .linkquest-linked-articles-list,
+  .linkquest-unlinked-articles-list {
+    gap: 10px;
+  }
+
+  .linkquest-linked-article-image,
+  .linkquest-unlinked-article-image {
+    height: 160px;
+  }
+
+  .linkquest-linked-article-content,
+  .linkquest-unlinked-article-content {
+    padding: 12px;
+  }
+
+  .linkquest-linked-article-title,
+  .linkquest-unlinked-article-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .linkquest-snippet-source {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .linkquest-linked-article-snippet,
+  .linkquest-unlinked-article-snippet {
+    font-size: 15px;
+  }
+
+  .linkquest-answer-status {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .linkquest-unlinked-explanation {
+    padding: 12px;
+    margin: 10px 0;
+  }
+
+  .linkquest-unlinked-explanation-text {
+    font-size: 13px;
+  }
+
+  .linkquest-results-page .linkquest-featured {
+    margin: 0 0 16px 0;
+    padding: 6px;
+  }
+
+  .linkquest-results-page .linkquest-featured-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    top: 6px;
+    right: 6px;
+  }
+
+  .linkquest-results-page .linkquest-featured-main {
+    gap: 10px;
+  }
+
+  .linkquest-results-page .linkquest-featured-image {
+    width: 70px;
+    height: 52px;
+  }
+
+  .linkquest-results-page .linkquest-featured-content {
+    gap: 4px;
+  }
+
+  .linkquest-results-page .linkquest-featured-title {
+    font-size: 17px;
+  }
+
+  .linkquest-results-page .linkquest-featured-description {
+    font-size: 14px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 360px) {
+  .linkquest-results-page {
+    padding: 10px 8px 60px;
+  }
+
+  .linkquest-results-container {
+    padding: 10px 8px;
+  }
+
+  .linkquest-results-title {
+    font-size: 16px;
+  }
+
+  .linkquest-results-score-text {
+    font-size: 14px;
+  }
+
+  .linkquest-results-score-dot {
+    width: 12px;
+    height: 12px;
+    font-size: 7px;
+  }
+
+  .linkquest-featured-thumbnail {
+    height: 140px;
+  }
+
+  .linkquest-featured-name {
+    font-size: 15px;
+  }
+
+  .linkquest-linked-article-image,
+  .linkquest-unlinked-article-image {
+    height: 140px;
+  }
+
+  .linkquest-linked-article-title,
+  .linkquest-unlinked-article-title {
+    font-size: 15px;
+  }
+
+  .linkquest-results-page .linkquest-featured-image {
+    width: 60px;
+    height: 45px;
+  }
+
+  .linkquest-results-page .linkquest-featured-title {
+    font-size: 14px;
+  }
+
+  .linkquest-results-page .linkquest-featured-content {
+  }
 }

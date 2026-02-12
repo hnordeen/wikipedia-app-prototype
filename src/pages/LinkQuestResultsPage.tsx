@@ -151,7 +151,6 @@ const LinkQuestResultsPage: React.FC = () => {
 
         {/* 3. Today's Featured Article (same format as gameplay screen) */}
         <div className="linkquest-featured-section">
-          <h3 className="linkquest-section-title">Today's Featured Article</h3>
           <div className="linkquest-featured">
             <div className="linkquest-featured-badge">Featured article</div>
             <div className="linkquest-featured-main">

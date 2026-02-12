@@ -5,6 +5,7 @@ export interface GameCard {
   title: string;
   description?: string;
   thumbnail?: ArticleImage;
+  extract?: string; // First paragraph for articles without images
   isLinked: boolean;
   linkContext?: string; // HTML snippet showing where it appears in featured article
   linkContextTitle?: string; // The title of the highlighted link in the context
@@ -45,6 +46,7 @@ export interface GameResult {
 }
 
 const GAME_STATE_KEY = 'linkQuest_gameState';
+const GAME_DATA_KEY = 'linkQuest_gameData';
 const STREAK_KEY = 'linkQuest_streak';
 const LAST_PLAYED_KEY = 'linkQuest_lastPlayed';
 
@@ -54,6 +56,90 @@ export function getUtcDateKey(d: Date = new Date()): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
   const day = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// Extract links from the first section (introduction) only
+function extractLinksFromFirstSection(htmlContent: string): Set<string> {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  
+  // Find the first section heading (h2) to mark the end of the introduction
+  const firstSectionHeading = doc.querySelector('h2');
+  let introEndElement: Element | null = null;
+  
+  if (firstSectionHeading) {
+    introEndElement = firstSectionHeading;
+  } else {
+    // If no h2, use first ~1000 characters of text as fallback
+    const body = doc.body;
+    if (body) {
+      const allText = body.textContent || '';
+      let charCount = 0;
+      const walker = doc.createTreeWalker(body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      let node: Node | null;
+      while (node = walker.nextNode()) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          charCount += (node.textContent || '').length;
+          if (charCount > 1000) {
+            introEndElement = node.parentElement;
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  const links = doc.querySelectorAll('a[href^="/wiki/"]');
+  const linkTitles = new Set<string>();
+  
+  links.forEach(link => {
+    // Skip links from infoboxes
+    const infobox = link.closest('.infobox, .infobox_v2, .infobox_v3, table.infobox');
+    if (infobox) {
+      return;
+    }
+    
+    // Skip links from references/citations
+    const reference = link.closest('.reference, .mw-references-wrap, .reflist, .references, ol.references, ul.references, .cite_note, .citation');
+    if (reference) {
+      return;
+    }
+    
+    // Skip links from navboxes
+    const navbox = link.closest('.navbox, .vertical-navbox, .horizontal-navbox');
+    if (navbox) {
+      return;
+    }
+    
+    // Skip links from image captions
+    const imageCaption = link.closest('.thumbcaption, .gallerytext, .image, figcaption, .floatright, .floatleft, .thumb, .thumbinner, .thumbimage');
+    if (imageCaption) {
+      return;
+    }
+    
+    // Only include links that appear BEFORE or AT the introduction end (first section only)
+    if (introEndElement) {
+      const position = link.compareDocumentPosition(introEndElement);
+      // If link comes after introEndElement, skip it (we only want first section)
+      if (position & Node.DOCUMENT_POSITION_PRECEDING) {
+        // Link is after intro end, skip it
+        return;
+      }
+      // Otherwise, link is before or at intro end, include it
+    }
+    
+    const href = link.getAttribute('href');
+    if (href) {
+      const path = href.replace('/wiki/', '');
+      // Filter out special pages
+      if (!path.match(/^(File:|Template:|Category:|Help:|Portal:|Wikipedia:|Special:)/i)) {
+        const title = decodeURIComponent(path).replace(/_/g, ' ');
+        linkTitles.add(title);
+      }
+    }
+  });
+  
+  return linkTitles;
 }
 
 // Extract links from HTML content, skipping the introduction section
@@ -364,10 +450,60 @@ function getLinkContext(htmlContent: string, linkTitle: string): { html: string;
   return undefined;
 }
 
+// Get cached daily game if it exists for today
+export const getCachedDailyGame = (dateKey: string): DailyGame | null => {
+  try {
+    const cached = localStorage.getItem(`${GAME_DATA_KEY}_${dateKey}`);
+    if (cached) {
+      const game = JSON.parse(cached);
+      // Verify it's for the correct date
+      if (game.dateKey === dateKey) {
+        return game;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Clear cached daily game (useful for forcing regeneration)
+export const clearCachedDailyGame = (dateKey?: string): void => {
+  try {
+    const keyToClear = dateKey || getUtcDateKey(new Date());
+    localStorage.removeItem(`${GAME_DATA_KEY}_${keyToClear}`);
+    console.log('Cleared cached game for', keyToClear);
+  } catch (error) {
+    console.error('Error clearing cached game:', error);
+  }
+};
+
+// Cache daily game
+const cacheDailyGame = (dateKey: string, game: DailyGame): void => {
+  try {
+    localStorage.setItem(`${GAME_DATA_KEY}_${dateKey}`, JSON.stringify(game));
+  } catch (error) {
+    console.error('Error caching game data:', error);
+  }
+};
+
 // Generate daily game
-export const generateDailyGame = async (): Promise<DailyGame | null> => {
+export const generateDailyGame = async (forceRegenerate: boolean = false): Promise<DailyGame | null> => {
   try {
     const dateKey = getUtcDateKey(new Date());
+    
+    // Check if we already have a cached game for today (unless forcing regeneration)
+    if (!forceRegenerate) {
+      const cachedGame = getCachedDailyGame(dateKey);
+      if (cachedGame) {
+        console.log('Using cached game for', dateKey);
+        return cachedGame;
+      }
+    } else {
+      // Clear cache if forcing regeneration
+      clearCachedDailyGame(dateKey);
+    }
+    
     const today = new Date();
     
     // Get today's featured article from Wikipedia's main page using Wikifeeds
@@ -396,8 +532,10 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       getArticleImages(featuredTitle, true).then(images => images[0]) // prioritizeInfobox = true
     ]);
     
-    // Extract all linked articles
+    // Extract all linked articles (from sections after the first section)
     const linkedTitles = extractLinksFromContent(contentHtml);
+    // Also extract links from first section to exclude them from not-linked candidates
+    const firstSectionLinks = extractLinksFromFirstSection(contentHtml);
     const linkedTitlesArray = Array.from(linkedTitles);
     
     if (linkedTitlesArray.length < 5) {
@@ -405,12 +543,15 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       return null;
     }
     
-    // Get 3-4 linked articles (with images preferred)
+    // Sort linked titles deterministically (alphabetically) so everyone gets the same candidates
+    linkedTitlesArray.sort();
+    
+    // Get 3 linked articles (with images preferred)
     // IMPORTANT: Never use the featured article itself as a card
     // IMPORTANT: Never use "Main page" as a card
     const linkedCandidates: GameCard[] = [];
     for (const title of linkedTitlesArray) {
-      if (linkedCandidates.length >= 4) break;
+      if (linkedCandidates.length >= 4) break; // Get up to 4 to ensure we have enough after filtering
       
       // Skip if this is the featured article (case-insensitive comparison)
       if (title.toLowerCase() === featuredTitle.toLowerCase()) {
@@ -423,22 +564,48 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       }
       
       try {
-        const [images, shortDesc] = await Promise.all([
+        const [images, shortDesc, summary] = await Promise.all([
           getArticleImages(title),
-          getArticleShortDescription(title)
+          getArticleShortDescription(title),
+          getWikipediaPageSummary(title).catch(() => null) // Fallback if short desc fails
         ]);
         
-        // Only include articles that have images
-        if (!images || images.length === 0 || !images[0]) {
-          continue;
+        // Include articles with or without images
+        // If no image, we'll use extract instead
+        const hasImage = images && images.length > 0 && images[0];
+        
+        // Get description with fallbacks: short description -> extract from summary -> undefined
+        let description: string | undefined = undefined;
+        let extract: string | undefined = undefined;
+        
+        if (shortDesc) {
+          description = shortDesc;
+        } else if (summary?.extract) {
+          // Use first sentence or first 120 characters of extract as fallback
+          const fullExtract = summary.extract;
+          const firstSentence = fullExtract.split(/[.!?]\s+/)[0];
+          description = firstSentence.length > 0 && firstSentence.length <= 150 
+            ? firstSentence 
+            : fullExtract.substring(0, 120).trim() + (fullExtract.length > 120 ? '...' : '');
+        }
+        
+        // If no image, get more of the first paragraph for the extract
+        if (!hasImage && summary?.extract) {
+          // Get first paragraph (up to 300 characters) for cards without images
+          const fullExtract = summary.extract;
+          const firstParagraph = fullExtract.split('\n\n')[0] || fullExtract;
+          extract = firstParagraph.length > 300 
+            ? firstParagraph.substring(0, 300).trim() + '...' 
+            : firstParagraph;
         }
         
         const context = getLinkContext(contentHtml, title);
         
         linkedCandidates.push({
           title,
-          description: shortDesc || undefined,
-          thumbnail: images[0],
+          description,
+          thumbnail: hasImage ? images[0] : undefined,
+          extract,
           isLinked: true,
           linkContext: context ? context.html : undefined,
           linkContextTitle: context ? context.highlightedLinkTitle : undefined,
@@ -461,21 +628,66 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       const similar = await getMoreLikeArticles(featuredTitle.replace(/ /g, '_'), 20);
       for (const result of similar) {
         if (notLinkedCandidates.length >= 3) break;
-        if (linkedTitles.has(result.title)) continue; // Skip if actually linked
+        if (linkedTitles.has(result.title)) continue; // Skip if actually linked in later sections
+        // Skip if this article appears in the first section (introduction)
+        if (firstSectionLinks.has(result.title)) continue; // Don't use as distractor if linked in intro
         // Skip if this is the featured article itself
         if (result.title.toLowerCase() === featuredTitle.toLowerCase()) continue;
         // Skip "Main page" articles
         if (result.title.toLowerCase() === 'main page' || result.title.toLowerCase().includes('main page')) continue;
         
-        // Only include articles that have images
-        if (!result.images || result.images.length === 0 || !result.images[0]) {
-          continue;
+        // Include articles with or without images
+        const hasImage = result.images && result.images.length > 0 && result.images[0];
+        
+        // Get description with fallbacks: snippet from search -> short description -> extract
+        let description: string | undefined = result.snippet;
+        let extract: string | undefined = undefined;
+        
+        // If no snippet, try to get short description or extract
+        if (!description || description.trim().length === 0) {
+          try {
+            const shortDesc = await getArticleShortDescription(result.title);
+            if (shortDesc) {
+              description = shortDesc;
+            } else {
+              // Last resort: get extract
+              const summary = await getWikipediaPageSummary(result.title).catch(() => null);
+              if (summary?.extract) {
+                const fullExtract = summary.extract;
+                const firstSentence = fullExtract.split(/[.!?]\s+/)[0];
+                description = firstSentence.length > 0 && firstSentence.length <= 150 
+                  ? firstSentence 
+                  : fullExtract.substring(0, 120).trim() + (fullExtract.length > 120 ? '...' : '');
+              }
+            }
+          } catch (error) {
+            // If all fallbacks fail, use snippet (even if empty) or undefined
+            description = result.snippet || undefined;
+          }
+        }
+        
+        // If no image, get more of the first paragraph for the extract
+        if (!hasImage) {
+          try {
+            const summary = await getWikipediaPageSummary(result.title).catch(() => null);
+            if (summary?.extract) {
+              // Get first paragraph (up to 300 characters) for cards without images
+              const fullExtract = summary.extract;
+              const firstParagraph = fullExtract.split('\n\n')[0] || fullExtract;
+              extract = firstParagraph.length > 300 
+                ? firstParagraph.substring(0, 300).trim() + '...' 
+                : firstParagraph;
+            }
+          } catch (error) {
+            // If extract fetch fails, leave extract undefined
+          }
         }
         
         notLinkedCandidates.push({
           title: result.title,
-          description: result.snippet,
-          thumbnail: result.images[0],
+          description,
+          thumbnail: hasImage && result.images ? result.images[0] : undefined,
+          extract,
           isLinked: false
         });
       }
@@ -489,17 +701,33 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
     // Note: We rely on search results for not-linked candidates
     // If we don't have enough, we'll use what we have (minimum 3 required)
     
-    // Combine and shuffle cards (3-4 linked, 2-3 not linked) = 6 total
-    const linkedCount = Math.min(4, Math.max(3, linkedCandidates.length));
-    const notLinkedCount = 6 - linkedCount;
+    // Ensure we have exactly 6 cards (3 linked, 3 not-linked)
+    const targetLinkedCount = 3; // Always 3 linked
+    const targetNotLinkedCount = 3; // Always 3 not-linked = 6 total
     
-    const selectedLinked = linkedCandidates.slice(0, linkedCount);
-    const selectedNotLinked = notLinkedCandidates.slice(0, notLinkedCount);
+    // Sort candidates deterministically by title (alphabetically) before selecting
+    // This ensures the same cards are selected for everyone on the same day
+    linkedCandidates.sort((a, b) => a.title.localeCompare(b.title));
+    notLinkedCandidates.sort((a, b) => a.title.localeCompare(b.title));
     
+    // Take exactly the number we need
+    const selectedLinked = linkedCandidates.slice(0, Math.min(targetLinkedCount, linkedCandidates.length));
+    const selectedNotLinked = notLinkedCandidates.slice(0, Math.min(targetNotLinkedCount, notLinkedCandidates.length));
+    
+    // If we don't have enough cards, we can't generate a valid game
+    if (selectedLinked.length < targetLinkedCount || selectedNotLinked.length < targetNotLinkedCount) {
+      console.error(`Not enough cards: ${selectedLinked.length} linked, ${selectedNotLinked.length} not-linked (need ${targetLinkedCount} and ${targetNotLinkedCount})`);
+      return null;
+    }
+    
+    // Combine cards (exactly 6 total)
     const allCards = [...selectedLinked, ...selectedNotLinked];
-    shuffleArray(allCards);
     
-    return {
+    // Use deterministic shuffle based on date
+    const seed = getSeedFromDate(dateKey);
+    shuffleArray(allCards, seed);
+    
+    const game: DailyGame = {
       featuredArticle: {
         title: featuredTitle,
         leadParagraph: summary?.extract?.split('\n\n')[0] || '',
@@ -509,6 +737,11 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       dateKey,
       featuredArticleContentHtml: contentHtml
     };
+    
+    // Cache the game so it doesn't regenerate throughout the day
+    cacheDailyGame(dateKey, game);
+    
+    return game;
   } catch (error) {
     console.error('Error generating daily game:', error);
     return null;
@@ -516,10 +749,31 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
 };
 
 
-// Shuffle array
-function shuffleArray<T>(array: T[]): void {
+// Seeded random number generator for deterministic shuffling
+function seededRandom(seed: number): () => number {
+  let value = seed;
+  return function() {
+    value = (value * 9301 + 49297) % 233280;
+    return value / 233280;
+  };
+}
+
+// Create seed from date string (deterministic for same date)
+function getSeedFromDate(dateKey: string): number {
+  let hash = 0;
+  for (let i = 0; i < dateKey.length; i++) {
+    const char = dateKey.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Shuffle array deterministically using seeded random
+function shuffleArray<T>(array: T[], seed: number): void {
+  const random = seededRandom(seed);
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
 }
