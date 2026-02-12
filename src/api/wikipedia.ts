@@ -403,7 +403,11 @@ export const getArticleImages = async (title: string, prioritizeInfobox: boolean
     const images = pages[pageId].images || [];
 
     // Filter and prioritize: infobox images first, then others
-    const imageList = images.filter((img: any) => img.title.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/));
+    // Match file extensions case-insensitively
+    const imageList = images.filter((img: any) => {
+      const titleLower = img.title.toLowerCase();
+      return titleLower.match(/\.(jpg|jpeg|png|gif|webp)$/);
+    });
     
     let finalImageList: any[];
     if (prioritizeInfobox && infoboxImages.length > 0) {
@@ -421,7 +425,10 @@ export const getArticleImages = async (title: string, prioritizeInfobox: boolean
       });
       
       // Combine: infobox images first, then others
-      finalImageList = [...prioritizedImages, ...otherImages].slice(0, 4);
+      // For featured article header, take the first (best) infobox image
+      finalImageList = prioritizedImages.length > 0 
+        ? [prioritizedImages[0]] 
+        : otherImages.slice(0, 1);
     } else {
       // No prioritization, just take first images
       finalImageList = imageList.slice(0, 4);

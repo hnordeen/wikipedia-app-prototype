@@ -48,6 +48,14 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-card-title i {
+  font-size: 16px;
+  color: inherit;
 }
 
 .game-badge {

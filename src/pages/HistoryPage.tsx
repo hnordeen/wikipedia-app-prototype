@@ -170,9 +170,9 @@ const HistoryPage: React.FC = () => {
   if (Object.keys(groupedHistory).length === 0) {
     return (
       <div className="history-page">
-      <div className="title-container">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
-        <h1 className="page-title">Activity</h1>
+        <div className="title-container">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
+          <h1 className="page-title">Activity</h1>
         {flatHistory.length > 0 && (
           <button 
             className="history-share-button"
@@ -186,8 +186,8 @@ const HistoryPage: React.FC = () => {
             Share
           </button>
         )}
-      </div>
-      {renderDetailedInsights()}
+        </div>
+        {renderDetailedInsights()}
         <div className="history-empty">
           <h2>No Activity</h2>
           <p>Articles you view will appear here</p>

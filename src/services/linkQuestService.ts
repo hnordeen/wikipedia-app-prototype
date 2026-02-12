@@ -25,6 +25,7 @@ export interface DailyGame {
 export interface GameState {
   currentCardIndex: number;
   answers: boolean[]; // true = correct, false = incorrect
+  skippedIndices: number[]; // indices of cards that were skipped
   hintsUsed: number;
   shuffleCount: number;
   isComplete: boolean;
@@ -39,6 +40,8 @@ export interface GameResult {
   pullQuoteSectionHeading?: string;
   linkedArticles: GameCard[];
   notLinkedArticles: GameCard[];
+  allLinkedArticles: Array<{ card: GameCard; wasCorrect: boolean }>; // All linked articles with correctness
+  allNotLinkedArticles: Array<{ card: GameCard; wasCorrect: boolean }>; // All not-linked articles with correctness
 }
 
 const GAME_STATE_KEY = 'linkQuest_gameState';
@@ -402,14 +405,20 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       return null;
     }
     
-    // Get 5-7 linked articles (with images preferred)
+    // Get 3-4 linked articles (with images preferred)
     // IMPORTANT: Never use the featured article itself as a card
+    // IMPORTANT: Never use "Main page" as a card
     const linkedCandidates: GameCard[] = [];
     for (const title of linkedTitlesArray) {
-      if (linkedCandidates.length >= 7) break;
+      if (linkedCandidates.length >= 4) break;
       
       // Skip if this is the featured article (case-insensitive comparison)
       if (title.toLowerCase() === featuredTitle.toLowerCase()) {
+        continue;
+      }
+      
+      // Skip "Main page" articles
+      if (title.toLowerCase() === 'main page' || title.toLowerCase().includes('main page')) {
         continue;
       }
       
@@ -444,17 +453,19 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
       }
     }
     
-    // Get 3-5 not-linked articles (plausible but not actually linked)
+    // Get 2-3 not-linked articles (plausible but not actually linked)
     const notLinkedCandidates: GameCard[] = [];
     
     // Try to get similar articles that aren't linked
     try {
       const similar = await getMoreLikeArticles(featuredTitle.replace(/ /g, '_'), 20);
       for (const result of similar) {
-        if (notLinkedCandidates.length >= 5) break;
+        if (notLinkedCandidates.length >= 3) break;
         if (linkedTitles.has(result.title)) continue; // Skip if actually linked
         // Skip if this is the featured article itself
         if (result.title.toLowerCase() === featuredTitle.toLowerCase()) continue;
+        // Skip "Main page" articles
+        if (result.title.toLowerCase() === 'main page' || result.title.toLowerCase().includes('main page')) continue;
         
         // Only include articles that have images
         if (!result.images || result.images.length === 0 || !result.images[0]) {
@@ -478,9 +489,9 @@ export const generateDailyGame = async (): Promise<DailyGame | null> => {
     // Note: We rely on search results for not-linked candidates
     // If we don't have enough, we'll use what we have (minimum 3 required)
     
-    // Combine and shuffle cards (5-7 linked, 3-5 not linked)
-    const linkedCount = Math.min(7, Math.max(5, linkedCandidates.length));
-    const notLinkedCount = 10 - linkedCount;
+    // Combine and shuffle cards (3-4 linked, 2-3 not linked) = 6 total
+    const linkedCount = Math.min(4, Math.max(3, linkedCandidates.length));
+    const notLinkedCount = 6 - linkedCount;
     
     const selectedLinked = linkedCandidates.slice(0, linkedCount);
     const selectedNotLinked = notLinkedCandidates.slice(0, notLinkedCount);
@@ -581,12 +592,20 @@ export const calculateResult = (game: DailyGame, state: GameState): GameResult =
   
   const linkedArticles: GameCard[] = [];
   const notLinkedArticles: GameCard[] = [];
+  const allLinkedArticles: Array<{ card: GameCard; wasCorrect: boolean }> = [];
+  const allNotLinkedArticles: Array<{ card: GameCard; wasCorrect: boolean }> = [];
   
   game.cards.forEach((card, index) => {
     const wasCorrect = state.answers[index] === card.isLinked;
-    if (wasCorrect && card.isLinked) {
-      linkedArticles.push(card);
-    } else if (!card.isLinked) {
+    if (card.isLinked) {
+      // All linked articles
+      allLinkedArticles.push({ card, wasCorrect });
+      if (wasCorrect) {
+        linkedArticles.push(card);
+      }
+    } else {
+      // All not-linked articles
+      allNotLinkedArticles.push({ card, wasCorrect });
       notLinkedArticles.push(card);
     }
   });
@@ -617,6 +636,8 @@ export const calculateResult = (game: DailyGame, state: GameState): GameResult =
     pullQuote,
     pullQuoteSectionHeading,
     linkedArticles,
-    notLinkedArticles
+    notLinkedArticles,
+    allLinkedArticles,
+    allNotLinkedArticles
   };
 };

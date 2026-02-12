@@ -20,16 +20,16 @@ const AppContent: React.FC = () => {
   return (
     <>
       {!isLinkQuestRoute && <NavBar />}
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/history" element={<HistoryPage />} />
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/search" element={<SearchPage />} />
+      <Route path="/history" element={<HistoryPage />} />
         <Route path="/games" element={<GamesPage />} />
         <Route path="/games/linkquest" element={<LinkQuestPage />} />
         <Route path="/games/linkquest/results" element={<LinkQuestResultsPage />} />
         <Route path="/games/linkquest/explore" element={<LinkQuestExplorePage />} />
-        <Route path="/article/:title" element={<ArticlePage />} />
-      </Routes>
+      <Route path="/article/:title" element={<ArticlePage />} />
+    </Routes>
     </>
   );
 };

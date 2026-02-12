@@ -2,6 +2,26 @@
   min-height: 100vh;
   background: #f8f9fa;
   padding: 20px 16px 100px;
+  position: relative;
+}
+
+.linkquest-results-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  color: #000;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  z-index: 1000;
 }
 
 .linkquest-results-container {
@@ -9,34 +29,89 @@
   margin: 0 auto;
 }
 
-.linkquest-score-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20px;
-  padding: 40px 20px;
-  text-align: center;
-  color: white;
+.linkquest-results-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.linkquest-results-close:active {
+  transform: scale(0.95);
+}
+
+.linkquest-results-container {
+  padding: 20px 16px;
+}
+
+.linkquest-results-score-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.linkquest-score-large {
-  font-size: 72px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  line-height: 1;
-}
-
-.linkquest-score-label {
-  font-size: 18px;
-  font-weight: 500;
-  opacity: 0.9;
+.linkquest-results-score-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
-.linkquest-hints-used {
-  font-size: 14px;
-  opacity: 0.8;
+.linkquest-results-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.linkquest-results-score-tracker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.linkquest-results-score-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  transition: all 0.3s ease;
+}
+
+.linkquest-results-score-dot.linkquest-results-score-correct {
+  background: #34C759;
+  color: white;
+  border: 1px solid #34C759;
+}
+
+.linkquest-results-score-dot.linkquest-results-score-incorrect {
+  background: #FF3B30;
+  color: white;
+  border: 1px solid #FF3B30;
+}
+
+.linkquest-results-score-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
   margin-top: 8px;
+}
+
+.linkquest-loading {
+  padding: 40px;
+  text-align: center;
+  font-size: 16px;
+  color: #666;
 }
 
 .linkquest-featured-card {
@@ -48,10 +123,17 @@
 }
 
 .linkquest-section-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.linkquest-featured-section {
+  margin-bottom: 32px;
 }
 
 .linkquest-featured-thumbnail {
@@ -148,23 +230,248 @@
 }
 
 .linkquest-share-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: transparent;
+  color: #007AFF;
+  box-shadow: none;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
 }
 
 .linkquest-share-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  background: rgba(0, 122, 255, 0.05);
+  border-color: rgba(0, 122, 255, 0.3);
 }
 
-.linkquest-explore-btn {
+/* Featured article - reuse styles from gameplay */
+.linkquest-results-page .linkquest-featured {
   background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
+  margin: 0 0 24px 0;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  flex-shrink: 0;
 }
 
-.linkquest-explore-btn:hover {
-  background: #f8f9fa;
-  transform: translateY(-2px);
+.linkquest-results-page .linkquest-featured-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-weight: 600;
+  z-index: 10;
+}
+
+.linkquest-results-page .linkquest-featured-main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.linkquest-results-page .linkquest-featured-image {
+  width: 100px;
+  height: 75px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.linkquest-results-page .linkquest-featured-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 100px; /* Space for badge */
+}
+
+.linkquest-results-page .linkquest-featured-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+
+.linkquest-results-page .linkquest-featured-description {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Linked Articles Section */
+.linkquest-linked-articles-section {
+  margin-top: 24px;
+}
+
+.linkquest-linked-articles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.linkquest-linked-article-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.linkquest-linked-article-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.linkquest-linked-article-content {
+  padding: 16px;
+}
+
+.linkquest-linked-article-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.linkquest-snippet-source {
+  font-size: 13px;
+  color: #999;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.linkquest-linked-article-snippet {
+  font-size: 15px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.linkquest-linked-article-snippet span.linkquest-highlighted-answer {
+  background: #ffeb3b !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  text-decoration: none !important;
+  transform: scale(1.05) !important;
+  display: inline-block !important;
+}
+
+.linkquest-answer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.linkquest-answer-status.correct {
+  color: #34C759;
+  background: rgba(52, 199, 89, 0.1);
+}
+
+.linkquest-answer-status.incorrect {
+  color: #FF3B30;
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.linkquest-answer-status i {
+  font-size: 12px;
+}
+
+/* Unlinked Articles Section */
+.linkquest-unlinked-articles-section {
+  margin-top: 32px;
+}
+
+.linkquest-unlinked-articles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.linkquest-unlinked-article-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.linkquest-unlinked-article-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.linkquest-unlinked-article-content {
+  padding: 16px;
+}
+
+.linkquest-unlinked-article-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.linkquest-unlinked-explanation {
+  background: rgba(0, 122, 255, 0.05);
+  border-left: 3px solid #007AFF;
+  padding: 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+.linkquest-unlinked-explanation-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.linkquest-unlinked-explanation-text strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.linkquest-unlinked-article-snippet {
+  font-size: 15px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
 }
