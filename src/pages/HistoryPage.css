@@ -16,6 +16,7 @@
   width: 100%; 
   margin-bottom: 15px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .page-logo {
@@ -34,6 +35,40 @@
   margin-top: 0;
   margin-bottom: 0;
   flex-shrink: 0; 
+}
+
+.history-share-button {
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.history-share-button:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.history-share-button:active {
+  transform: translateY(0);
+}
+
+.history-share-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* Existing HistoryPage styles (ensure these are merged or placed appropriately if file exists) */
@@ -254,6 +289,13 @@
 
   .history-title {
     font-size: 1.75rem;
+  }
+
+  .history-share-button {
+    position: static;
+    margin-top: 12px;
+    align-self: center;
+    padding: 10px 20px;
   }
 
   .insights-summary {

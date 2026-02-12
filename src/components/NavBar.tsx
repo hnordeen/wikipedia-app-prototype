@@ -33,6 +33,15 @@ const NavBar: React.FC = () => {
         </svg>
         Activity
       </Link>
+      <Link 
+        to="/games" 
+        className={`nav-item ${location.pathname === '/games' ? 'active' : ''}`}
+      >
+        <svg className="nav-icon" viewBox="0 0 24 24">
+          <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm4 3H6v2H4v2h2v2h2v-2h2v-2H8V9zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-3 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" fill="currentColor"/>
+        </svg>
+        Games
+      </Link>
     </nav>
   );
 };

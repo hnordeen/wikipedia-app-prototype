@@ -1,0 +1,372 @@
+﻿Wikipedia Hyperlink Game - Requirements & UX Flow Documentation
+Product Overview
+A daily Wikipedia-based mobile game that transforms casual users into engaged daily players by challenging them to identify which articles are linked within the day's featured Wikipedia article.
+Target Platform: Web app prototype (future: Android native app)
+Target Users: Casual mobile users → Active daily users
+Session Duration: ~5 minutes (with post-game exploration)
+Inspiration: NYT Games engagement model
+________________
+
+
+Core Game Mechanics
+Daily Challenge Structure
+* New game daily based on Wikipedia's community-chosen Featured Article
+* 10 article cards to guess per game
+* Binary choice per card: Swipe RIGHT if linked in featured article, LEFT if not linked
+* No lives system - each card gets one answer (right or wrong)
+* Immediate feedback after each swipe
+User Actions
+Primary Actions
+* Swipe Right: Article IS linked in featured article
+* Swipe Left: Article is NOT linked in featured article
+* Shuffle: Reorder remaining cards (unlimited)
+* Hint: Reveal article description for current card (tracked but doesn't penalize score)
+* Read Lead: Access featured article's lead paragraph (available anytime)
+Post-Answer Reveal
+After each correct answer, show:
+* Where in the featured article the hyperlink appears (contextual snippet)
+* Encourages learning the connection between articles
+________________
+
+
+User Experience Flows
+Flow 1: First-Time User Experience
+App Launch (First Time)
+    ↓
+Daily Game Screen (Today's Featured Article)
+    ↓
+Contextual Onboarding (In-Context Hints)
+    • Pointing arrow: "Swipe right if this article is linked"
+    • Pointing arrow: "Swipe left if it's not linked"
+    • Clear on-screen instructions (self-explanatory)
+    • No separate tutorial - learn by doing
+    ↓
+First Card Appears
+    ↓
+User Swipes (Right or Left)
+    ↓
+Immediate Feedback Animation
+    • ✓ Correct: Green pulse + Show hyperlink location in featured article
+    • ✗ Wrong: Red shake + Show correct answer
+    ↓
+Next Card Appears (9 remaining)
+    ↓
+[Repeat for all 10 cards]
+    ↓
+Game Complete → Results Screen
+    ↓
+Exploration Page
+    ↓
+Share Flow (Optional)
+Flow 2: Returning User Daily Session
+App Launch (Returning User)
+    ↓
+[Check for existing streak]
+    ↓
+Daily Game Screen
+    • Featured article title/image at top
+    • Streak counter visible
+    • First card ready to swipe
+    ↓
+Gameplay Loop (10 cards):
+    
+    For each card:
+    1. View card (article title + thumbnail)
+    2. Optional: Tap "Shuffle" to reorder deck
+    3. Optional: Tap "Hint" to see article description
+    4. Optional: Tap "Read Lead" to see featured article intro
+    5. Swipe Right or Left
+    6. See immediate feedback
+    7. If correct: See hyperlink location snippet
+    8. Progress to next card
+    ↓
+[After 10th card]
+    ↓
+Results Screen (Score Summary)
+    • Score: X/10 correct
+    • Hints used: X
+    • Featured article name
+    • Pull quote: Sentence from featured article containing a correctly guessed hyperlink
+    • Streak counter 🔥
+    • "Share Results" button
+    ↓
+Exploration Page
+    • Section 1: Featured Article (full card, primary CTA)
+    • Section 2: Linked Articles (cards for all correctly guessed linked articles)
+    • Section 3: Not Linked (cards for articles that weren't in featured article)
+    • Sticky module: Score + Countdown timer to next game
+    ↓
+Optional: Tap any article card → Navigate to Wikipedia article
+Flow 3: Mid-Game Helper Actions
+User on Card #4 (uncertain)
+    ↓
+Taps "Hint" Button
+    ↓
+Card flips to show article description
+    • Hint counter increments (shown in final score)
+    • User can now make more informed decision
+    ↓
+User swipes (Right or Left)
+
+User on Card #6 (needs more context)
+    ↓
+Taps "Read Lead" Button
+    ↓
+Modal/Sheet appears with featured article lead paragraph
+    • Scrollable
+    • "Close" button to return to game
+    ↓
+User reads, closes modal
+    ↓
+Returns to card, makes decision
+
+User on Card #3 (wants different order)
+    ↓
+Taps "Shuffle" Button
+    ↓
+Cards animate/shuffle
+    • Different card now on top
+    • Can shuffle unlimited times
+    ↓
+User continues swiping
+Flow 4: Share Results Flow
+Results Screen
+    ↓
+User taps "Share Results"
+    ↓
+Shareable Card Generated:
+    • Featured article title
+    • Score: X/10
+    • Hints used: X
+    • Streak: X days 🔥
+    • Pull quote with hyperlink highlight
+    • "Play daily at [URL]"
+    ↓
+Native share sheet opens
+    ↓
+User shares to social media/messaging
+Flow 5: Game Completion → Next Day
+Exploration Page (Day 1 Complete)
+    ↓
+Sticky Score Module shows:
+    • "Next game in: 18:34:22"
+    • Current streak: 1 🔥
+    ↓
+User browses articles (optional)
+    ↓
+User exits app
+    ↓
+[Next Day - Day 2]
+    ↓
+User returns to app
+    ↓
+New featured article loaded
+    • Streak continues: 2 🔥
+    • Fresh set of 10 cards
+    ↓
+Repeat Flow 2
+
+________________
+Key Screen Specifications
+Screen 1: Game Screen (Primary Interface)
+Layout Components:
+* Header Zone
+   * Featured article title
+   * Featured article hero image (subtle, not distracting)
+   * Current streak indicator (top-right)
+   * Progress indicator: "Card 3/10"
+* Card Zone (Center Focus)
+   * Large card displaying:
+      * Article title (prominent)
+      * Article thumbnail image
+      * Subtle visual indication it's swipeable
+* Action Zone (Bottom)
+   * "Shuffle" button (icon: 🔀)
+   * "Hint" button (icon: 💡)
+   * "Read Lead" button (icon: 📖)
+   * Swipe indicators: ← (red) | → (green)
+Interaction States:
+* Default: Card ready to swipe
+* Hint Active: Card flipped showing description
+* Swiping: Card follows finger/touch with tilt
+* Post-Swipe Feedback:
+   * Correct: Green glow + checkmark animation
+   * Wrong: Red shake + X animation
+* Reveal State: Snippet of featured article with hyperlink highlighted
+Screen 2: Results Screen
+Layout Components:
+* Score Summary Card
+   * Large score: "8/10" with animated counter
+   * Hints used: "2 hints used"
+   * Streak: "5 day streak 🔥"
+* Featured Article Context
+   * Article title + thumbnail
+   * Pull quote: Sentence containing correctly guessed hyperlink (highlighted)
+* CTA Buttons
+   * "Share Results" (primary)
+   * "Explore Articles" (secondary)
+Screen 3: Exploration Page
+Layout Sections:
+1. Sticky Score Module (Top)
+* Today's score: X/10
+* Countdown: "Next game in: HH:MM:SS"
+* Streak counter
+2. Featured Article (Hero Section)
+* Large card with article title, image, lead sentence
+* "Read Full Article" CTA button
+* Visually distinct from other sections
+3. Linked Articles Section
+* Header: "Articles Linked in Today's Featured Article"
+* Grid of article cards
+* Each card shows: thumbnail, title, brief description
+* Tap to read article
+4. Not Linked Section
+* Header: "Articles Not Linked"
+* Grid of article cards (same format)
+* Subtle visual difference (muted colors/opacity)
+Card Interactions:
+* Tap any article card → Opens Wikipedia article (in-app browser or external)
+________________
+
+
+Friction-Free UX Principles
+Minimizing Cognitive Load
+✅ Binary choice only - swipe right or left, no complex decisions
+✅ Immediate feedback - no waiting to learn if you're right
+✅ Progressive disclosure - hints available but not required
+✅ Clear visual hierarchy - card is focal point, actions are secondary
+✅ Familiar gesture - swiping is intuitive for mobile users
+Encouraging Daily Habit
+✅ Streak tracking - visible motivation to return
+✅ Countdown timer - creates anticipation for next game
+✅ 5-minute session - respects user time, low commitment
+✅ Social sharing - FOMO and community engagement
+✅ Fresh content daily - Wikipedia's featured article ensures variety
+Supporting Learning & Exploration
+✅ Contextual reveals - show where links appear after correct guesses
+✅ Hint system - scaffolding for different knowledge levels
+✅ Post-game exploration - extends engagement beyond game
+✅ Pull quotes - surfacing interesting content from featured article
+✅ Article cards - low-friction way to discover new topics
+Reducing Drop-off Points
+✅ No lives/penalties - can't "lose" the game, reduces frustration
+✅ Skip tutorials - learn by doing with contextual hints
+✅ Unlimited shuffles - control over card order reduces anxiety
+✅ Free hints - encourages use without score penalty
+✅ Auto-save progress - implicit, no manual saving needed
+________________
+
+
+Technical Considerations for Prototype
+Data Requirements
+* Daily featured article API (Wikipedia)
+* 10 article cards per game:
+   * ~5-7 actually linked in featured article
+   * ~3-5 plausible but not linked
+* Article metadata: title, description, thumbnail
+* Hyperlink positions within featured article text
+State Management
+* Current card index (1-10)
+* Answers array (correct/incorrect)
+* Hints used counter
+* Shuffle count (for analytics, not shown)
+* Streak data (localStorage for web prototype)
+* Last played date
+Performance Goals
+* Card swipe animation: <100ms response time
+* Feedback animation: complete within 500ms
+* Article card loading: <200ms for smooth browsing
+________________
+
+
+Success Metrics
+Engagement
+* Daily Active Users (DAU)
+* Streak retention (% users with 3+, 7+, 30+ day streaks)
+* Average session duration
+* Completion rate (% who finish all 10 cards)
+Learning & Exploration
+* Hints used per game (average)
+* "Read Lead" usage rate
+* Post-game article clicks
+* Time spent on exploration page
+Social
+* Share rate (% of completed games shared)
+* Viral coefficient (new users from shares)
+Friction Points to Monitor
+* Drop-off by card number (where do users abandon?)
+* Error patterns (are certain cards confusing?)
+* Hint usage patterns (which cards need hints most?)
+* Time to first swipe (is onboarding clear enough?)
+________________
+
+
+Future Enhancements (Post-Prototype)
+Considered for Android Native App
+* Push notifications for daily game reminders
+* Achievements system (streak milestones, perfect games)
+* Leaderboards (friends or global)
+* Difficulty modes (easy/hard based on article obscurity)
+* Multiplayer (compete with friends on same featured article)
+* Archive mode (play previous days' games)
+* Accessibility (screen reader support, high contrast mode)
+________________
+
+
+Open Questions for User Testing
+1. Is 10 cards the right number, or should we test 5/15?
+2. Should wrong answers show the correct answer immediately or at end?
+3. Do users want to see their accuracy % in addition to raw score?
+4. Should shuffle have a subtle animation to indicate deck changed?
+5. Is the exploration page too much, or does it successfully extend engagement?
+6. Do users understand the game without explicit tutorial?
+7. Should streak be more prominent (e.g., lose streak notification if miss a day)?
+________________
+
+
+Design System Notes
+Color Palette (Suggested)
+* Primary: Wikipedia blue (#3366CC)
+* Correct: Green (#4CAF50)
+* Incorrect: Red (#F44336)
+* Neutral: Grays for secondary text
+* Background: White/light gray for readability
+Typography
+* Clear hierarchy: Large card titles, smaller descriptions
+* Readable sizes: Minimum 16px for body text on mobile
+* Accessible contrast: WCAG AA compliant
+Animations
+* Swipe: Card follows finger with subtle rotation
+* Feedback: Micro-interactions (bounce for correct, shake for wrong)
+* Transitions: Smooth 300ms easing between states
+* Shuffle: Cards cascade/fan animation
+________________
+
+
+Implementation Priority
+MVP (Must Have)
+* Core swipe mechanic
+* 10-card game loop
+* Immediate feedback
+* Basic results screen
+* Score tracking
+* Streak counter
+* Hyperlink reveal on correct answers
+V1 (Should Have)
+* Hint system
+* Shuffle functionality
+* Read lead paragraph
+* Shareable results card
+* Exploration page
+* Countdown timer
+V2 (Nice to Have)
+* Animations polish
+* Social sharing analytics
+* More sophisticated card algorithm
+* Personalization based on reading history
+________________
+
+
+Document Version: 1.0
+Last Updated: February 5, 2026
+Status: Ready for design & prototyping

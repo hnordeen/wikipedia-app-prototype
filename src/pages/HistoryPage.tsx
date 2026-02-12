@@ -2,10 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
 import { useHistory } from '../hooks/useHistory';
-import { getHistoryInsights } from '../services/historyService';
+import { getHistoryInsights, getHistory } from '../services/historyService';
 import { getReminderStatus } from '../services/reminderService';
+import { getRecentRabbitHoles } from '../services/rabbitHoleService';
 import NavBar from '../components/NavBar';
 import DonationModal from '../components/DonationModal';
+import ShareSheet from '../components/ShareSheet';
+import RabbitHoleVisualization from '../components/RabbitHoleVisualization';
 import './HistoryPage.css';
 
 const MIN_ARTICLES_FOR_DONATION_CTA = 5;
@@ -19,6 +22,16 @@ const HistoryPage: React.FC = () => {
   const { groupedHistory } = useHistory();
   const insights = getHistoryInsights();
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const flatHistory = useMemo(() => {
+    return Object.values(groupedHistory).flat().sort((a, b) => b.timestamp - a.timestamp);
+  }, [groupedHistory]);
+  const [rabbitHoles, setRabbitHoles] = useState(() => getRecentRabbitHoles(10));
+
+  // Update rabbit holes when history changes (since tracking happens in ArticlePage)
+  useEffect(() => {
+    setRabbitHoles(getRecentRabbitHoles(10));
+  }, [groupedHistory]);
 
   const totalArticlesInHistory = useMemo(() => {
     return Object.values(groupedHistory).reduce((sum, items) => sum + items.length, 0);
@@ -157,11 +170,24 @@ const HistoryPage: React.FC = () => {
   if (Object.keys(groupedHistory).length === 0) {
     return (
       <div className="history-page">
-        <div className="title-container">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
-          <h1 className="page-title">Activity</h1>
-        </div>
-        {renderDetailedInsights()}
+      <div className="title-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
+        <h1 className="page-title">Activity</h1>
+        {flatHistory.length > 0 && (
+          <button 
+            className="history-share-button"
+            onClick={() => setIsShareSheetOpen(true)}
+            aria-label="Share your rabbit holes"
+            title="Share your rabbit holes"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20px" height="20px">
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+            </svg>
+            Share
+          </button>
+        )}
+      </div>
+      {renderDetailedInsights()}
         <div className="history-empty">
           <h2>No Activity</h2>
           <p>Articles you view will appear here</p>
@@ -181,8 +207,26 @@ const HistoryPage: React.FC = () => {
       <div className="title-container">
         <img src="https://upload.wikimedia.org/wikipedia/commons/1/10/Wikipedia-W-bold-in-square.svg" alt="Wikipedia Logo" className="page-logo" />
         <h1 className="page-title">Activity</h1>
+        {flatHistory.length > 0 && (
+          <button 
+            className="history-share-button"
+            onClick={() => setIsShareSheetOpen(true)}
+            aria-label="Share your rabbit holes"
+            title="Share your rabbit holes"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20px" height="20px">
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+            </svg>
+            Share
+          </button>
+        )}
       </div>
       {renderDetailedInsights()}
+      {rabbitHoles.length > 0 && (
+        <div className="rabbit-hole-section">
+          <RabbitHoleVisualization rabbitHoles={rabbitHoles} />
+        </div>
+      )}
       <div className="history-list">
         {Object.entries(groupedHistory).map(([date, items]) => (
           <div key={date} className="history-group">
@@ -217,6 +261,11 @@ const HistoryPage: React.FC = () => {
         isOpen={isDonationModalOpen} 
         onClose={handleCloseDonationModal}
         articleCount={totalArticlesInHistory}
+      />
+      <ShareSheet
+        isOpen={isShareSheetOpen}
+        onClose={() => setIsShareSheetOpen(false)}
+        history={flatHistory}
       />
     </div>
   );

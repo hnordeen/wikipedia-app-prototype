@@ -1,0 +1,158 @@
+.games-page {
+  padding: 16px 16px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.games-header {
+  margin-bottom: 24px;
+}
+
+.games-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.games-subtitle {
+  margin: 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.game-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.game-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.game-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.game-badge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.game-card-description {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 16px;
+}
+
+.game-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-card-button {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  background: #e5e7eb;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-card-button-primary {
+  background: #111827;
+  color: #ffffff;
+}
+
+.game-card-button-primary:hover {
+  filter: brightness(1.1);
+}
+
+.game-card-button-secondary {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.game-card-button-secondary:hover {
+  background: #d1d5db;
+}
+
+.games-empty {
+  margin-top: 60px;
+  text-align: center;
+}
+
+.games-empty-content {
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .games-page {
+    color: #f9fafb;
+  }
+
+  .game-card {
+    background: #111827;
+    border-color: #1f2937;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+
+  .games-subtitle,
+  .game-card-description,
+  .games-footer-note {
+    color: #9ca3af;
+  }
+
+  .game-badge {
+    background: #1f2937;
+    color: #d1d5db;
+  }
+
+  .game-card-button {
+    background: #374151;
+    color: #d1d5db;
+  }
+
+  .game-card-button-primary {
+    background: #f9fafb;
+    color: #111827;
+  }
+
+  .game-card-button-secondary {
+    background: #374151;
+    color: #d1d5db;
+  }
+
+  .game-card-button-secondary:hover {
+    background: #4b5563;
+  }
+}
+

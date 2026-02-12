@@ -1,0 +1,170 @@
+.linkquest-results-page {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 20px 16px 100px;
+}
+
+.linkquest-results-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.linkquest-score-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 40px 20px;
+  text-align: center;
+  color: white;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.linkquest-score-large {
+  font-size: 72px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.linkquest-score-label {
+  font-size: 18px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 12px;
+}
+
+.linkquest-hints-used {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+.linkquest-featured-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.linkquest-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #1a1a1a;
+}
+
+.linkquest-featured-thumbnail {
+  width: 100%;
+  max-width: 400px;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.linkquest-featured-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #1a1a1a;
+}
+
+.linkquest-pull-quote {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.linkquest-pull-quote-section {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.linkquest-quote-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Disable all links in the pull quote */
+.linkquest-quote-text a {
+  pointer-events: none !important;
+  cursor: default !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  user-select: none;
+}
+
+.linkquest-quote-text a:hover {
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.linkquest-quote-text a[href] {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Keep strong highlight for the answered article */
+.linkquest-quote-text a[data-highlight="true"],
+.linkquest-quote-text span.linkquest-highlighted-answer {
+  background: #ffeb3b !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  text-decoration: none !important;
+  transform: scale(1.05) !important;
+  display: inline-block !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.linkquest-results-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.linkquest-share-btn,
+.linkquest-explore-btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.linkquest-share-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.linkquest-share-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.linkquest-explore-btn {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.linkquest-explore-btn:hover {
+  background: #f8f9fa;
+  transform: translateY(-2px);
+}

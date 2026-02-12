@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, TouchEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getArticleContent, getArticleImages, ArticleImage } from '../api/wikipedia';
 import { addToHistory } from '../services/historyService';
+import { trackArticleView } from '../services/rabbitHoleService';
 import { formatTitleForDisplay, formatTitleForUrl } from '../utils/titleUtils';
 import NavBar from '../components/NavBar';
 import DonationReminderPrompt from '../components/DonationReminderPrompt';
@@ -14,6 +15,8 @@ const SWIPE_MAX_VERTICAL_THRESHOLD = 50;
 const ArticlePage: React.FC = () => {
   const { title } = useParams<{ title: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [content, setContent] = useState<string>('');
   const [heroImage, setHeroImage] = useState<ArticleImage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,70 @@ const ArticlePage: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     articleLoadedRef.current = false;
+  }, [title]);
+
+  useEffect(() => {
+    const fetchArticle = async () => {
+      if (!title) return;
+      
+      setLoading(true);
+      setError(null);
+      setHeroImage(null);
+      setContent('');
+
+      try {
+        const [articleContentHtml, articleImages] = await Promise.all([
+          getArticleContent(title),
+          getArticleImages(title)
+        ]);
+
+        setContent(processWikipediaContent(articleContentHtml));
+        
+        if (articleImages.length > 0) {
+          setHeroImage(articleImages[0]);
+        }
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = articleContentHtml;
+        const firstParagraph = tempDiv.querySelector('p')?.textContent || '';
+        const displayTitle = formatTitleForDisplay(title);
+        addToHistory(
+          displayTitle,
+          firstParagraph,
+          articleImages.length > 0 ? articleImages[0] : undefined
+        );
+
+        // Track rabbit hole - get source from location state or referrer
+        const sourceTitle = location.state?.fromTitle || 
+          (document.referrer ? new URL(document.referrer).pathname.split('/article/')[1]?.replace(/_/g, ' ') : undefined);
+        trackArticleView(displayTitle, sourceTitle);
+
+        if (!articleLoadedRef.current) {
+          const reminderStatus = getReminderStatus();
+          if (reminderStatus && reminderStatus.reminderEnabled) {
+            await incrementArticleViewCount();
+            const reminderCheck = await checkShouldShowReminder();
+            if (reminderCheck.show) {
+              setDonationPromptDetails({ 
+                amount: reminderCheck.amount, 
+                frequency: reminderCheck.frequency, 
+                url: reminderCheck.url 
+              });
+              setShowDonationPrompt(true);
+            }
+          }
+          articleLoadedRef.current = true; 
+        }
+
+      } catch (err) {
+        setError('Failed to load article');
+        console.error('Error loading article:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticle();
   }, [title]);
 
   const handleBack = () => {
@@ -59,7 +126,6 @@ const ArticlePage: React.FC = () => {
     const diffY = touchEndYRef.current - touchStartYRef.current;
 
     if (diffX > SWIPE_BACK_THRESHOLD && Math.abs(diffY) < SWIPE_MAX_VERTICAL_THRESHOLD) {
-      console.log("Swipe back detected!");
       navigate(-1); 
     }
     
@@ -70,71 +136,6 @@ const ArticlePage: React.FC = () => {
     isSwipingRef.current = false;
   };
 
-  useEffect(() => {
-    const fetchArticle = async () => {
-      if (!title) return;
-      
-      setLoading(true);
-      setError(null);
-      setHeroImage(null);
-      setContent('');
-      
-      try {
-        const [articleContent, articleImages] = await Promise.all([
-          getArticleContent(title),
-          getArticleImages(title)
-        ]);
-
-        const processedContent = processWikipediaContent(articleContent);
-        setContent(processedContent);
-        
-        if (articleImages.length > 0) {
-          setHeroImage(articleImages[0]);
-        }
-
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = articleContent;
-        const firstParagraph = tempDiv.querySelector('p')?.textContent || '';
-        
-        const displayTitle = formatTitleForDisplay(title);
-        addToHistory(
-          displayTitle,
-          firstParagraph,
-          articleImages.length > 0 ? articleImages[0] : undefined
-        );
-
-        if (!articleLoadedRef.current) {
-          const reminderStatus = getReminderStatus();
-          if (reminderStatus && reminderStatus.reminderEnabled) {
-            console.log("ARTICLE_PAGE: Incrementing article view count.");
-            await incrementArticleViewCount();
-            const reminderCheck = await checkShouldShowReminder();
-            if (reminderCheck.show) {
-              console.log("ARTICLE_PAGE: Showing donation reminder prompt.", reminderCheck);
-              setDonationPromptDetails({ 
-                amount: reminderCheck.amount, 
-                frequency: reminderCheck.frequency, 
-                url: reminderCheck.url 
-              });
-              setShowDonationPrompt(true);
-            } else {
-              console.log("ARTICLE_PAGE: Not showing reminder prompt.", reminderCheck, getReminderStatus());
-            }
-          }
-          articleLoadedRef.current = true; 
-        }
-
-      } catch (err) {
-        setError('Failed to load article');
-        console.error('Error loading article:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchArticle();
-  }, [title]);
-
   const handleCloseDonationPrompt = async (action: 'donate' | 'snooze' | 'disable' | 'close') => {
     setShowDonationPrompt(false);
     setDonationPromptDetails({});
@@ -142,13 +143,10 @@ const ArticlePage: React.FC = () => {
     if (!reminderStatus || !reminderStatus.reminderEnabled) return;
 
     if (action === 'donate' || action === 'close') {
-      console.log("ARTICLE_PAGE: Resetting reminder counter due to action:", action);
       await resetReminderCounter();
     } else if (action === 'snooze') {
-      console.log("ARTICLE_PAGE: Snoozing reminder.");
       await snoozeReminder();
     } else if (action === 'disable') {
-      console.log("ARTICLE_PAGE: Disabling reminder permanently.");
       await disableReminder();
     }
   };
@@ -167,8 +165,7 @@ const ArticlePage: React.FC = () => {
         link.removeAttribute('href');
         link.classList.add('wiki-link');
       } else if (href && (href.startsWith('#') || link.getAttribute('rel') === 'nofollow')) {
-        // Keep internal anchor links or external nofollow links as they are, or handle differently
-        // For now, let them be, or remove them if they cause issues
+        // Keep internal anchor links or external nofollow links as they are
       } else if (href) {
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
@@ -190,14 +187,17 @@ const ArticlePage: React.FC = () => {
     if (wikiLink) {
       const articleTitle = wikiLink.getAttribute('data-article');
       if (articleTitle) {
-        navigate(`/article/${formatTitleForUrl(articleTitle)}`);
+        const currentTitle = formatTitleForDisplay(title || '');
+        navigate(`/article/${formatTitleForUrl(articleTitle)}`, {
+          state: { fromTitle: currentTitle }
+        });
       }
     }
   };
 
   if (loading) {
     return (
-      <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
+      <div className="article-page">
         <div className="article-loading">Loading article...</div>
         <NavBar />
       </div>
@@ -206,7 +206,7 @@ const ArticlePage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
+      <div className="article-page">
         <div className="article-error">{error}</div>
         <NavBar />
       </div>
@@ -214,7 +214,7 @@ const ArticlePage: React.FC = () => {
   }
 
   return (
-    <div className="article-page" /*onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}*/>
+    <div className="article-page" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
       <button className="back-button" onClick={handleBack}>
         <svg viewBox="0 0 24 24" className="back-icon">
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>

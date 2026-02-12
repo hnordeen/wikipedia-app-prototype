@@ -1,8 +1,18 @@
 /**
+ * Decodes HTML entities in text (e.g., &amp; -> &, &quot; -> ", etc.)
+ */
+export const decodeHtmlEntities = (text: string): string => {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+};
+
+/**
  * Formats a Wikipedia title for display by:
  * 1. Decoding URI components
  * 2. Replacing underscores with spaces
- * 3. Handling special characters
+ * 3. Decoding HTML entities
+ * 4. Handling special characters
  */
 export const formatTitleForDisplay = (title: string): string => {
   let formattedTitle: string;
@@ -12,6 +22,9 @@ export const formatTitleForDisplay = (title: string): string => {
     // If decoding fails, just replace underscores
     formattedTitle = title.replace(/_/g, ' ');
   }
+  
+  // Decode HTML entities
+  formattedTitle = decodeHtmlEntities(formattedTitle);
 
   const maxLength = 30; // Max characters for display
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;

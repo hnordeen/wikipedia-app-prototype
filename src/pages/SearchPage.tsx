@@ -191,28 +191,32 @@ const SearchPage: React.FC = () => {
         {loading ? (
           <div className="loading">Searching...</div>
         ) : results.length > 0 ? (
-          results.map((result) => (
-            <div key={result.pageid || result.title} className="search-result">
-              <h2><Link to={`/article/${encodeURIComponent(result.title.replace(/ /g, '_'))}`}>{result.title}</Link></h2>
-              <div 
-                className="snippet"
-                dangerouslySetInnerHTML={{ __html: result.snippet || '' }}
-              />
-              {result.images && result.images.length > 0 && (
-                <div className="result-images">
-                  {result.images.map((image, index_image) => (
-                    <div key={index_image} className="image-container">
-                      <img
-                        src={image.url}
-                        alt={image.description || result.title}
-                        loading="lazy"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+          results.map((result) => {
+            const articleLink = `/article/${encodeURIComponent(result.title.replace(/ /g, '_'))}`;
+
+            return (
+              <div key={result.pageid || result.title} className="search-result">
+                <h2><Link to={articleLink}>{result.title}</Link></h2>
+                <div 
+                  className="snippet"
+                  dangerouslySetInnerHTML={{ __html: result.snippet || '' }}
+                />
+                {result.images && result.images.length > 0 && (
+                  <div className="result-images">
+                    {result.images.map((image, index_image) => (
+                      <div key={index_image} className="image-container">
+                        <img
+                          src={image.url}
+                          alt={image.description || result.title}
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         ) : searchParams.get('q') ? (
           <div className="no-results">No results found for "{searchParams.get('q')}".</div>
         ) : (
