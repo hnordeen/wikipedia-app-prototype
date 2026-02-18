@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameResult, DailyGame } from '../services/linkQuestService';
 import { formatTitleForDisplay, formatTitleForUrl, decodeHtmlEntities } from '../utils/titleUtils';
-import { getArticleExtract } from '../api/wikipedia';
+import { getArticleExtract, getWikipediaPageSummary } from '../api/wikipedia';
 import './LinkQuestResultsPage.css';
 
 const LinkQuestResultsPage: React.FC = () => {
@@ -12,6 +12,7 @@ const LinkQuestResultsPage: React.FC = () => {
   const [game, setGame] = useState<DailyGame | null>(null);
   const [animatedScore, setAnimatedScore] = useState(0);
   const [unlinkedExtracts, setUnlinkedExtracts] = useState<Record<string, string>>({});
+  const [featuredExtract, setFeaturedExtract] = useState<string | null>(null);
 
   useEffect(() => {
     const state = location.state as { result: GameResult; game: DailyGame } | null;
@@ -57,6 +58,28 @@ const LinkQuestResultsPage: React.FC = () => {
           setUnlinkedExtracts(extracts);
         };
         fetchExtracts();
+      }
+      
+      // Fetch more extract text for featured article
+      if (state.game.featuredArticle.title) {
+        const fetchFeaturedExtract = async () => {
+          try {
+            const summary = await getWikipediaPageSummary(state.game.featuredArticle.title);
+            if (summary?.extract) {
+              // Get first 2-3 paragraphs (approximately 600-800 characters)
+              const paragraphs = summary.extract.split('\n\n').filter(p => p.trim().length > 0);
+              const firstFewParagraphs = paragraphs.slice(0, 3).join('\n\n');
+              // Limit to ~800 characters if longer
+              const limitedExtract = firstFewParagraphs.length > 800 
+                ? firstFewParagraphs.substring(0, 800).trim() + '...'
+                : firstFewParagraphs;
+              setFeaturedExtract(limitedExtract);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch extract for featured article:`, error);
+          }
+        };
+        fetchFeaturedExtract();
       }
       
       return () => clearInterval(timer);
@@ -129,16 +152,22 @@ const LinkQuestResultsPage: React.FC = () => {
             <div className="linkquest-results-score-tracker">
               {game.cards.map((card, index) => {
                 const wasCorrect = answerMap.get(card.title) ?? false;
+                const isLinked = card.isLinked;
                 return (
-                  <div
-                    key={index}
-                    className={`linkquest-results-score-dot ${
-                      wasCorrect
-                        ? 'linkquest-results-score-correct'
-                        : 'linkquest-results-score-incorrect'
-                    }`}
-                  >
-                    <i className={`fas ${wasCorrect ? 'fa-check' : 'fa-times'}`}></i>
+                  <div key={index} className="linkquest-results-score-item">
+                    <div
+                      className={`linkquest-results-score-dot ${
+                        wasCorrect
+                          ? 'linkquest-results-score-correct'
+                          : 'linkquest-results-score-incorrect'
+                      }`}
+                    >
+                      <i className={`fas ${wasCorrect ? 'fa-check' : 'fa-times'}`}></i>
+                    </div>
+                    {/* Show linked/not linked indicator below */}
+                    <div className={`linkquest-results-score-link-indicator ${isLinked ? 'linked' : 'not-linked'}`}>
+                      <i className={`fas ${isLinked ? 'fa-link' : 'fa-unlink'}`}></i>
+                    </div>
                   </div>
                 );
               })}
@@ -149,28 +178,41 @@ const LinkQuestResultsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. Today's Featured Article (same format as gameplay screen) */}
+        {/* 3. Today's Featured Article */}
         <div className="linkquest-featured-section">
+          <h3 className="linkquest-section-title">Featured Article</h3>
           <div className="linkquest-featured">
-            <div className="linkquest-featured-badge">Featured article</div>
-            <div className="linkquest-featured-main">
-              {game.featuredArticle.thumbnail && (
-                <img 
-                  src={game.featuredArticle.thumbnail.url} 
-                  alt={game.featuredArticle.title}
-                  className="linkquest-featured-image"
-                />
-              )}
-              <div className="linkquest-featured-content">
-                <h2 className="linkquest-featured-title">
-                  {formatTitleForDisplay(game.featuredArticle.title)}
-                </h2>
-                {game.featuredArticle.leadParagraph && (
-                  <p className="linkquest-featured-description">
-                    {game.featuredArticle.leadParagraph}
-                  </p>
-                )}
-              </div>
+            {game.featuredArticle.thumbnail && (
+              <img 
+                src={game.featuredArticle.thumbnail.url} 
+                alt={game.featuredArticle.title}
+                className="linkquest-featured-image"
+              />
+            )}
+            <div className="linkquest-featured-content">
+              <h2 
+                className="linkquest-featured-title"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/article/${formatTitleForUrl(game.featuredArticle.title)}`);
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {formatTitleForDisplay(game.featuredArticle.title)}
+              </h2>
+              {featuredExtract ? (
+                <div className="linkquest-featured-description">
+                  {featuredExtract.split('\n\n').map((paragraph, index) => (
+                    <p key={index} style={{ marginBottom: index < featuredExtract.split('\n\n').length - 1 ? '1em' : 0 }}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              ) : game.featuredArticle.leadParagraph ? (
+                <p className="linkquest-featured-description">
+                  {game.featuredArticle.leadParagraph}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -190,7 +232,14 @@ const LinkQuestResultsPage: React.FC = () => {
                     />
                   )}
                   <div className="linkquest-linked-article-content">
-                    <h4 className="linkquest-linked-article-title">
+                    <h4 
+                      className="linkquest-linked-article-title"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/article/${formatTitleForUrl(card.title)}`);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
                       {formatTitleForDisplay(card.title)}
                     </h4>
                     <div className={`linkquest-answer-status ${wasCorrect ? 'correct' : 'incorrect'}`}>
@@ -257,7 +306,14 @@ const LinkQuestResultsPage: React.FC = () => {
                     />
                   )}
                   <div className="linkquest-unlinked-article-content">
-                    <h4 className="linkquest-unlinked-article-title">
+                    <h4 
+                      className="linkquest-unlinked-article-title"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/article/${formatTitleForUrl(card.title)}`);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
                       {formatTitleForDisplay(card.title)}
                     </h4>
                     <div className={`linkquest-answer-status ${wasCorrect ? 'correct' : 'incorrect'}`}>

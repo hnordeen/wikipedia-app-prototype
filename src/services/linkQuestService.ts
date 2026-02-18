@@ -6,6 +6,7 @@ export interface GameCard {
   description?: string;
   thumbnail?: ArticleImage;
   extract?: string; // First paragraph for articles without images
+  fullExtract?: string; // Full extract text for expansion
   isLinked: boolean;
   linkContext?: string; // HTML snippet showing where it appears in featured article
   linkContextTitle?: string; // The title of the highlighted link in the context
@@ -56,6 +57,37 @@ export function getUtcDateKey(d: Date = new Date()): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
   const day = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// Check if a title is linked in the first paragraph of an article
+function isTitleLinkedInFirstParagraph(htmlContent: string, titleToCheck: string): boolean {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  
+  // Find the first paragraph
+  const firstParagraph = doc.querySelector('p');
+  if (!firstParagraph) {
+    return false;
+  }
+  
+  // Check all links in the first paragraph
+  const links = firstParagraph.querySelectorAll('a[href^="/wiki/"]');
+  for (const link of Array.from(links)) {
+    const href = link.getAttribute('href');
+    if (href) {
+      const path = href.replace('/wiki/', '');
+      // Filter out special pages
+      if (!path.match(/^(File:|Template:|Category:|Help:|Portal:|Wikipedia:|Special:)/i)) {
+        const title = decodeURIComponent(path).replace(/_/g, ' ');
+        // Case-insensitive comparison
+        if (title.toLowerCase() === titleToCheck.toLowerCase()) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false;
 }
 
 // Extract links from the first section (introduction) only
@@ -546,12 +578,12 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
     // Sort linked titles deterministically (alphabetically) so everyone gets the same candidates
     linkedTitlesArray.sort();
     
-    // Get 3 linked articles (with images preferred)
+    // Get 5 linked articles (with images preferred)
     // IMPORTANT: Never use the featured article itself as a card
     // IMPORTANT: Never use "Main page" as a card
     const linkedCandidates: GameCard[] = [];
     for (const title of linkedTitlesArray) {
-      if (linkedCandidates.length >= 4) break; // Get up to 4 to ensure we have enough after filtering
+      if (linkedCandidates.length >= 6) break; // Get up to 6 to ensure we have enough after filtering
       
       // Skip if this is the featured article (case-insensitive comparison)
       if (title.toLowerCase() === featuredTitle.toLowerCase()) {
@@ -563,7 +595,27 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
         continue;
       }
       
+      // Skip disambiguation pages
+      if (title.toLowerCase().includes('(disambiguation)')) {
+        continue;
+      }
+      
+      // Skip list pages
+      if (title.toLowerCase().startsWith('list of')) {
+        continue;
+      }
+      
       try {
+        // Fetch article HTML content to check if featured article is linked in first paragraph
+        const articleContentHtml = await getArticleContent(title);
+        
+        // Skip if the featured article title is linked in the first paragraph
+        // This would give away the answer
+        if (isTitleLinkedInFirstParagraph(articleContentHtml, featuredTitle)) {
+          console.log(`Skipping ${title} - featured article "${featuredTitle}" is linked in first paragraph`);
+          continue;
+        }
+        
         const [images, shortDesc, summary] = await Promise.all([
           getArticleImages(title),
           getArticleShortDescription(title),
@@ -574,26 +626,26 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
         // If no image, we'll use extract instead
         const hasImage = images && images.length > 0 && images[0];
         
-        // Get description with fallbacks: short description -> extract from summary -> undefined
+        // Get description: short description -> summary description (never use extract for description)
+        // Description and extract are separate - description is the short description, extract is the article text
         let description: string | undefined = undefined;
         let extract: string | undefined = undefined;
         
+        // Get description from short description API or summary description field
         if (shortDesc) {
           description = shortDesc;
-        } else if (summary?.extract) {
-          // Use first sentence or first 120 characters of extract as fallback
-          const fullExtract = summary.extract;
-          const firstSentence = fullExtract.split(/[.!?]\s+/)[0];
-          description = firstSentence.length > 0 && firstSentence.length <= 150 
-            ? firstSentence 
-            : fullExtract.substring(0, 120).trim() + (fullExtract.length > 120 ? '...' : '');
+        } else if (summary?.description) {
+          description = summary.description;
         }
         
-        // If no image, get more of the first paragraph for the extract
-        if (!hasImage && summary?.extract) {
-          // Get first paragraph (up to 300 characters) for cards without images
+        // Always get the first paragraph for the extract (shown underneath description)
+        // Extract is separate from description - it's the actual article text
+        let fullExtractText: string | undefined = undefined;
+        if (summary?.extract) {
+          // Get first paragraph (up to 300 characters) for cards
           const fullExtract = summary.extract;
           const firstParagraph = fullExtract.split('\n\n')[0] || fullExtract;
+          fullExtractText = firstParagraph; // Store full first paragraph
           extract = firstParagraph.length > 300 
             ? firstParagraph.substring(0, 300).trim() + '...' 
             : firstParagraph;
@@ -606,6 +658,7 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
           description,
           thumbnail: hasImage ? images[0] : undefined,
           extract,
+          fullExtract: fullExtractText, // Store full extract for expansion
           isLinked: true,
           linkContext: context ? context.html : undefined,
           linkContextTitle: context ? context.highlightedLinkTitle : undefined,
@@ -620,14 +673,14 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
       }
     }
     
-    // Get 2-3 not-linked articles (plausible but not actually linked)
+    // Get 5 not-linked articles (plausible but not actually linked)
     const notLinkedCandidates: GameCard[] = [];
     
     // Try to get similar articles that aren't linked
     try {
-      const similar = await getMoreLikeArticles(featuredTitle.replace(/ /g, '_'), 20);
+      const similar = await getMoreLikeArticles(featuredTitle.replace(/ /g, '_'), 30);
       for (const result of similar) {
-        if (notLinkedCandidates.length >= 3) break;
+        if (notLinkedCandidates.length >= 6) break;
         if (linkedTitles.has(result.title)) continue; // Skip if actually linked in later sections
         // Skip if this article appears in the first section (introduction)
         if (firstSectionLinks.has(result.title)) continue; // Don't use as distractor if linked in intro
@@ -635,52 +688,55 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
         if (result.title.toLowerCase() === featuredTitle.toLowerCase()) continue;
         // Skip "Main page" articles
         if (result.title.toLowerCase() === 'main page' || result.title.toLowerCase().includes('main page')) continue;
+        // Skip disambiguation pages
+        if (result.title.toLowerCase().includes('(disambiguation)')) continue;
+        // Skip list pages
+        if (result.title.toLowerCase().startsWith('list of')) continue;
         
         // Include articles with or without images
         const hasImage = result.images && result.images.length > 0 && result.images[0];
         
-        // Get description with fallbacks: snippet from search -> short description -> extract
+        // Get description: snippet -> short description -> summary description (never use extract for description)
+        // Description and extract are separate - description is the short description, extract is the article text
         let description: string | undefined = result.snippet;
         let extract: string | undefined = undefined;
         
-        // If no snippet, try to get short description or extract
+        // Fetch summary once to get both description and extract
+        let summary = null;
+        try {
+          summary = await getWikipediaPageSummary(result.title).catch(() => null);
+        } catch (error) {
+          // If summary fetch fails, continue with snippet
+        }
+        
+        // Get description: prefer snippet, then short description API, then summary description
         if (!description || description.trim().length === 0) {
           try {
             const shortDesc = await getArticleShortDescription(result.title);
             if (shortDesc) {
               description = shortDesc;
-            } else {
-              // Last resort: get extract
-              const summary = await getWikipediaPageSummary(result.title).catch(() => null);
-              if (summary?.extract) {
-                const fullExtract = summary.extract;
-                const firstSentence = fullExtract.split(/[.!?]\s+/)[0];
-                description = firstSentence.length > 0 && firstSentence.length <= 150 
-                  ? firstSentence 
-                  : fullExtract.substring(0, 120).trim() + (fullExtract.length > 120 ? '...' : '');
-              }
+            } else if (summary?.description) {
+              description = summary.description;
             }
           } catch (error) {
-            // If all fallbacks fail, use snippet (even if empty) or undefined
-            description = result.snippet || undefined;
+            // If short description API fails, try summary description if we have it
+            if (summary?.description) {
+              description = summary.description;
+            }
           }
         }
         
-        // If no image, get more of the first paragraph for the extract
-        if (!hasImage) {
-          try {
-            const summary = await getWikipediaPageSummary(result.title).catch(() => null);
-            if (summary?.extract) {
-              // Get first paragraph (up to 300 characters) for cards without images
-              const fullExtract = summary.extract;
-              const firstParagraph = fullExtract.split('\n\n')[0] || fullExtract;
-              extract = firstParagraph.length > 300 
-                ? firstParagraph.substring(0, 300).trim() + '...' 
-                : firstParagraph;
-            }
-          } catch (error) {
-            // If extract fetch fails, leave extract undefined
-          }
+        // Always get the first paragraph for the extract (shown underneath description)
+        // Extract is separate from description - it's the actual article text
+        let fullExtractText: string | undefined = undefined;
+        if (summary?.extract) {
+          // Get first paragraph (up to 300 characters) for cards
+          const fullExtract = summary.extract;
+          const firstParagraph = fullExtract.split('\n\n')[0] || fullExtract;
+          fullExtractText = firstParagraph; // Store full first paragraph
+          extract = firstParagraph.length > 300 
+            ? firstParagraph.substring(0, 300).trim() + '...' 
+            : firstParagraph;
         }
         
         notLinkedCandidates.push({
@@ -688,6 +744,7 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
           description,
           thumbnail: hasImage && result.images ? result.images[0] : undefined,
           extract,
+          fullExtract: fullExtractText, // Store full extract for expansion
           isLinked: false
         });
       }
@@ -701,9 +758,9 @@ export const generateDailyGame = async (forceRegenerate: boolean = false): Promi
     // Note: We rely on search results for not-linked candidates
     // If we don't have enough, we'll use what we have (minimum 3 required)
     
-    // Ensure we have exactly 6 cards (3 linked, 3 not-linked)
-    const targetLinkedCount = 3; // Always 3 linked
-    const targetNotLinkedCount = 3; // Always 3 not-linked = 6 total
+    // Ensure we have exactly 10 cards (5 linked, 5 not-linked)
+    const targetLinkedCount = 5; // Always 5 linked
+    const targetNotLinkedCount = 5; // Always 5 not-linked = 10 total
     
     // Sort candidates deterministically by title (alphabetically) before selecting
     // This ensures the same cards are selected for everyone on the same day

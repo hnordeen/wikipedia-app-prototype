@@ -22,17 +22,17 @@ export const formatTitleForDisplay = (title: string, allowTruncation: boolean = 
     // If decoding fails, just replace underscores
     formattedTitle = title.replace(/_/g, ' ');
   }
-  
+
   // Decode HTML entities
   formattedTitle = decodeHtmlEntities(formattedTitle);
 
   // Only truncate if explicitly allowed (for backward compatibility with other pages)
   if (allowTruncation) {
-    const maxLength = 30; // Max characters for display
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const maxLength = 30; // Max characters for display
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-    if (isMobile && formattedTitle.length > maxLength) {
-      return formattedTitle.substring(0, maxLength - 3) + '...'; // Reserve 3 chars for ellipsis
+  if (isMobile && formattedTitle.length > maxLength) {
+    return formattedTitle.substring(0, maxLength - 3) + '...'; // Reserve 3 chars for ellipsis
     }
   }
   return formattedTitle;

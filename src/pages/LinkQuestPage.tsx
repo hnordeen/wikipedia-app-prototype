@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyGame, getGameState, saveGameState, GameCard, DailyGame, GameState, calculateResult, getUtcDateKey } from '../services/linkQuestService';
 import { formatTitleForDisplay, formatTitleForUrl, decodeHtmlEntities } from '../utils/titleUtils';
@@ -31,6 +31,8 @@ const LinkQuestPage: React.FC = () => {
   const cardOffsetX = useRef<number>(0);
   const cardOffsetY = useRef<number>(0);
   const isDraggingRef = useRef<boolean>(false);
+  // Store card data in ref to preserve it across renders
+  const cardDataRef = useRef<Map<number, GameCard>>(new Map());
 
   const dateKeyUTC = getUtcDateKey();
   
@@ -68,7 +70,23 @@ const LinkQuestPage: React.FC = () => {
         
         // Restore state if exists
         if (existingState) {
-          setGameState(existingState);
+          // Ensure currentCardIndex is valid - find first unanswered card if index is out of bounds
+          let validIndex = existingState.currentCardIndex;
+          
+          // If index is out of bounds or card is already answered, find first unanswered card
+          if (validIndex >= dailyGame.cards.length || 
+              (existingState.answers[validIndex] !== undefined)) {
+            validIndex = dailyGame.cards.findIndex((_, idx) => existingState.answers[idx] === undefined);
+            // If all cards are answered, set to end
+            if (validIndex === -1) {
+              validIndex = dailyGame.cards.length;
+            }
+          }
+          
+          setGameState({
+            ...existingState,
+            currentCardIndex: validIndex
+          });
         }
         
         setLoading(false);
@@ -100,9 +118,40 @@ const LinkQuestPage: React.FC = () => {
       cardRef.current.style.transform = '';
       cardRef.current.style.opacity = '1';
     }
-  }, [gameState.currentCardIndex, showFeedback, isSwipingAway]);
+    
+  }, [gameState.currentCardIndex, showFeedback, isSwipingAway, game?.cards]);
 
-  const currentCard = game?.cards[gameState.currentCardIndex];
+  // Get current card directly from game - always read from source to ensure all data is present
+  let currentCardIndex = gameState.currentCardIndex;
+  let currentCard = game?.cards?.[currentCardIndex] || null;
+  
+  // If currentCard is null but game exists and isn't complete, find first unanswered card
+  if (!currentCard && game && !gameState.isComplete) {
+    const firstUnansweredIndex = game.cards.findIndex((_, idx) => gameState.answers[idx] === undefined);
+    if (firstUnansweredIndex !== -1) {
+      currentCardIndex = firstUnansweredIndex;
+      currentCard = game.cards[currentCardIndex];
+      // Update state to fix the index
+      if (currentCardIndex !== gameState.currentCardIndex) {
+        setGameState({
+          ...gameState,
+          currentCardIndex: currentCardIndex
+        });
+      }
+    }
+  }
+  
+  // Store card data in ref when game loads
+  useEffect(() => {
+    if (game?.cards) {
+      game.cards.forEach((card, index) => {
+        if (card) {
+          cardDataRef.current.set(index, { ...card });
+        }
+      });
+    }
+  }, [game?.cards]);
+
 
   // Measure and set consistent card height
   useEffect(() => {
@@ -166,18 +215,44 @@ const LinkQuestPage: React.FC = () => {
     // Remove from skipped indices if it was skipped
     const newSkippedIndices = gameState.skippedIndices.filter(idx => idx !== currentIndex);
     
-    // Calculate if this will complete the game (all cards answered, no skipped cards)
+    // Calculate if this will complete the game (all cards answered)
     const totalAnswered = newAnswers.filter(a => a !== undefined).length;
-    const willBeComplete = totalAnswered >= game.cards.length && newSkippedIndices.length === 0;
+    const willBeComplete = totalAnswered >= game.cards.length;
     
-    // Calculate next index (but don't update state yet - wait for animation)
+    // Calculate next index - only show cards that haven't been answered yet
+    // Don't loop back to skipped cards - each card should only be shown once
     let nextIndex = currentIndex + 1;
-    if (nextIndex >= game.cards.length && newSkippedIndices.length > 0) {
-      // Find the first skipped card that hasn't been answered
-      const firstSkipped = newSkippedIndices.find(idx => newAnswers[idx] === undefined);
-      if (firstSkipped !== undefined) {
-        nextIndex = firstSkipped;
+    
+    // Find the next unanswered card
+    while (nextIndex < game.cards.length && newAnswers[nextIndex] !== undefined) {
+      nextIndex++;
+    }
+    
+    // If we've gone through all cards and all are answered, game is complete
+    if (nextIndex >= game.cards.length) {
+      // All cards have been answered, game is complete
+      const finalState: GameState = {
+        ...gameState,
+        skippedIndices: newSkippedIndices,
+        answers: newAnswers,
+        currentCardIndex: game.cards.length, // Set to end
+        isComplete: true
+      };
+      
+      setGameState(finalState);
+      saveGameState(dateKeyUTC, finalState);
+      
+      // Navigate to results immediately
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'opacity 0.3s ease';
+        cardRef.current.style.opacity = '0';
       }
+      
+      setTimeout(() => {
+        const result = calculateResult(game, finalState);
+        navigate('/games/linkquest/results', { state: { result, game } });
+      }, 300);
+      return;
     }
     
     // Animate card away first - keep current card visible during animation
@@ -210,19 +285,30 @@ const LinkQuestPage: React.FC = () => {
       setPreviewNextCard(null);
       
       // Now update the card index
+      // Check if all cards are answered
+      const allAnswered = newAnswers.filter(a => a !== undefined).length >= game.cards.length;
+      
       const finalState: GameState = {
         ...partialState,
         currentCardIndex: nextIndex,
-        isComplete: willBeComplete
+        isComplete: allAnswered
       };
       
       setGameState(finalState);
       saveGameState(dateKeyUTC, finalState);
       
-      // If game is complete, navigate to results immediately
-      if (willBeComplete) {
-        const result = calculateResult(game, finalState);
-        navigate('/games/linkquest/results', { state: { result, game } });
+      // If game is complete, navigate to results with smooth transition
+      if (allAnswered) {
+        // Add fade out animation before navigation
+        if (cardRef.current) {
+          cardRef.current.style.transition = 'opacity 0.5s ease';
+          cardRef.current.style.opacity = '0';
+        }
+        
+        setTimeout(() => {
+          const result = calculateResult(game, finalState);
+          navigate('/games/linkquest/results', { state: { result, game } });
+        }, 500);
         return;
       }
       
@@ -235,58 +321,79 @@ const LinkQuestPage: React.FC = () => {
     }, 300);
   }, [game, currentCard, gameState, showFeedback, isSwipingAway, dateKeyUTC, navigate]);
 
-  const handleSkip = useCallback(() => {
+  const handleShuffle = useCallback(() => {
     if (!game || !currentCard || showFeedback || isSwipingAway) {
       return;
     }
     
     const currentIndex = gameState.currentCardIndex;
     
-    // Mark this card as skipped
+    // Get all available card indices (not answered, not the current one)
+    const availableIndices = game.cards
+      .map((_, index) => index)
+      .filter(index => 
+        index !== currentIndex && 
+        gameState.answers[index] === undefined
+      );
+    
+    // If no available cards (this is the last card), don't shuffle
+    if (availableIndices.length === 0) {
+      return;
+    }
+    
+    // Pick a random card from available cards
+    const randomIndex = Math.floor(Math.random() * availableIndices.length);
+    const nextIndex = availableIndices[randomIndex];
+    
+    // Mark current card as skipped (put it back in the stack)
     const newSkippedIndices = [...gameState.skippedIndices];
     if (!newSkippedIndices.includes(currentIndex)) {
       newSkippedIndices.push(currentIndex);
     }
     
-    // Advance to next card
-    let nextIndex = currentIndex + 1;
+    // Increment shuffle count
+    const newShuffleCount = (gameState.shuffleCount || 0) + 1;
     
-    // If we've gone through all cards, loop back to first skipped card that hasn't been answered
-    if (nextIndex >= game.cards.length) {
-      if (newSkippedIndices.length > 0) {
-        // Find the first skipped card that hasn't been answered yet
-        const firstSkipped = newSkippedIndices.find(idx => gameState.answers[idx] === undefined);
-        if (firstSkipped !== undefined) {
-          nextIndex = firstSkipped;
-        } else {
-          // All skipped cards have been answered, game is complete
-          nextIndex = game.cards.length; // Keep at end
-        }
-      }
-    }
-    
-    // Calculate completion: all cards must be answered (no skipped cards remaining)
+    // Calculate completion: all cards must be answered
     const totalAnswered = gameState.answers.filter(a => a !== undefined).length;
-    const willBeComplete = totalAnswered >= game.cards.length && newSkippedIndices.length === 0;
+    const willBeComplete = totalAnswered >= game.cards.length;
+    
+    // If all cards are answered, go to results with smooth transition
+    if (willBeComplete && game) {
+      const finalState: GameState = {
+        ...gameState,
+        skippedIndices: newSkippedIndices,
+        currentCardIndex: game.cards.length,
+        shuffleCount: newShuffleCount,
+        isComplete: true
+      };
+      
+      setGameState(finalState);
+      saveGameState(dateKeyUTC, finalState);
+      
+      // Add fade out animation before navigation
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'opacity 0.5s ease';
+        cardRef.current.style.opacity = '0';
+      }
+      
+      setTimeout(() => {
+        const result = calculateResult(game, finalState);
+        navigate('/games/linkquest/results', { state: { result, game } });
+      }, 500);
+      return;
+    }
     
     const newState: GameState = {
       ...gameState,
       skippedIndices: newSkippedIndices,
       currentCardIndex: nextIndex,
-      isComplete: willBeComplete
+      shuffleCount: newShuffleCount,
+      isComplete: false
     };
     
     setGameState(newState);
     saveGameState(dateKeyUTC, newState);
-    
-    // If game is complete, navigate to results
-    if (willBeComplete && game) {
-      setTimeout(() => {
-        const result = calculateResult(game, newState);
-        navigate('/games/linkquest/results', { state: { result, game } });
-      }, 300);
-      return;
-    }
     
     // Animate card away (simple fade out)
     if (cardRef.current) {
@@ -473,7 +580,10 @@ const LinkQuestPage: React.FC = () => {
       <header className="linkquest-header">
         <div className="linkquest-header-content">
           <div>
-            <h1 className="linkquest-title">Linked</h1>
+            <h1 className="linkquest-title">
+              <i className="fas fa-link" style={{ marginRight: '8px' }}></i>
+              Linked
+            </h1>
             <p className="linkquest-subtitle">Guess whether articles are hyperlinked within today's article.</p>
           </div>
         </div>
@@ -524,20 +634,7 @@ const LinkQuestPage: React.FC = () => {
       {/* Linking Icon */}
       {currentCard && (
         <div className="linkquest-linking-icon">
-          {(() => {
-            // If feedback is showing, display the answer status
-            if (showFeedback || feedbackRef.current) {
-              const feedback = showFeedback || feedbackRef.current;
-              if (feedback && feedback.isLinked !== undefined) {
-                // Show answer status: blue link if linked, red unlink if not linked
-                return (
-                  <i className={`fas ${feedback.isLinked ? 'fa-link' : 'fa-unlink'} ${feedback.isLinked ? 'linkquest-icon-linked' : 'linkquest-icon-not-linked'}`}></i>
-                );
-              }
-            }
-            // Before answering: show grey link icon
-            return <i className="fas fa-link linkquest-icon-pending"></i>;
-          })()}
+          <i className="fas fa-link linkquest-icon-pending"></i>
         </div>
       )}
 
@@ -555,25 +652,37 @@ const LinkQuestPage: React.FC = () => {
               return rotation;
             };
             
-            const remainingCards = game.cards.slice(gameState.currentCardIndex + 1, gameState.currentCardIndex + 11);
+            // Get all remaining unanswered cards
+            const remainingCards = game.cards.filter((_, index) => {
+              return index > gameState.currentCardIndex && gameState.answers[index] === undefined;
+            }).slice(0, 5); // Show up to 5 cards in the stack
             
             return (
               <div className="linkquest-card-stack">
                 {remainingCards.map((card, i) => {
                   const rotation = getRotation(i);
-                  const isNextCard = i === 0 && (isDragging || isSwipingAway);
-                  // Show next card preview while dragging or swiping current card
-                  const shouldShow = isNextCard;
+                  const isDraggingOrSwiping = isDragging || isSwipingAway;
+                  const isNextCard = i === 0;
+                  // Calculate progressive offset and scale for stack effect
+                  const offsetY = (i + 1) * 4;
+                  const scale = 1 - (i + 1) * 0.02;
+                  // When swiping, only show the next card. Otherwise show all for stack effect
+                  const shouldShow = isDraggingOrSwiping ? isNextCard : true;
+                  // Reduce opacity more aggressively on desktop for subtle stack effect
+                  const isDesktop = window.innerWidth >= 769;
+                  const baseOpacity = isDesktop ? 0.15 : 0.5;
+                  const opacityDecrement = isDesktop ? 0.03 : 0.08;
                   return (
                     <div 
                       key={`${gameState.currentCardIndex + 1 + i}-${card.title}`}
-                      className={`linkquest-stack-card ${isNextCard ? 'linkquest-next-card-preview' : ''}`}
+                      className={`linkquest-stack-card ${isNextCard && isDraggingOrSwiping ? 'linkquest-next-card-preview' : ''}`}
                       style={{ 
-                        zIndex: isNextCard ? 999 : -1 - i,
-                        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-                        opacity: shouldShow ? 1 : 0.6,
-                        display: shouldShow ? 'block' : 'none'
-                      }}
+                        zIndex: isNextCard && isDraggingOrSwiping ? 999 : 10000 - i - 1,
+                        transform: `translate(-50%, -50%) translateY(${offsetY}px) scale(${scale}) rotate(${rotation}deg)`,
+                        opacity: shouldShow ? (isNextCard && isDraggingOrSwiping ? 1 : Math.max(0.1, baseOpacity - (i * opacityDecrement))) : 0,
+                        display: shouldShow ? 'block' : 'none',
+                        pointerEvents: 'none'
+                      } as React.CSSProperties}
                     >
                       <div className="linkquest-card-main">
                         {card.thumbnail && (
@@ -587,14 +696,9 @@ const LinkQuestPage: React.FC = () => {
                           <h3 className="linkquest-card-title">
                             {formatTitleForDisplay(card.title, false)}
                           </h3>
-                          {card.description && (
-                            <p className="linkquest-card-subtitle">
-                              {decodeHtmlEntities(card.description)}
-                            </p>
-                          )}
-                          {!card.thumbnail && card.extract && (
+                          {card.extract && (
                             <p className="linkquest-card-extract">
-                              {decodeHtmlEntities(card.extract)}
+                              {decodeHtmlEntities(card.fullExtract || card.extract)}
                             </p>
                           )}
                         </div>
@@ -719,9 +823,17 @@ const LinkQuestPage: React.FC = () => {
                     
                     // Double check the state is actually complete
                     if (stateToUse.isComplete) {
-                      const result = calculateResult(game, stateToUse);
-                      console.log('Navigating to results with:', { result, game, stateToUse });
-                      navigate('/games/linkquest/results', { state: { result, game } });
+                      // Add fade out animation before navigation
+                      if (cardRef.current) {
+                        cardRef.current.style.transition = 'opacity 0.5s ease';
+                        cardRef.current.style.opacity = '0';
+                      }
+                      
+                      setTimeout(() => {
+                        const result = calculateResult(game, stateToUse);
+                        console.log('Navigating to results with:', { result, game, stateToUse });
+                        navigate('/games/linkquest/results', { state: { result, game } });
+                      }, 500);
                     } else {
                       console.warn('Game state not complete:', stateToUse);
                     }
@@ -753,59 +865,81 @@ const LinkQuestPage: React.FC = () => {
                 <h3 className="linkquest-card-title">
                   {formatTitleForDisplay(currentCard.title, false)}
                 </h3>
-                {currentCard.description && (
-                  <p className="linkquest-card-subtitle">
-                    {decodeHtmlEntities(currentCard.description)}
-                  </p>
-                )}
-                {!currentCard.thumbnail && currentCard.extract && (
-                  <p className="linkquest-card-extract">
-                    {decodeHtmlEntities(currentCard.extract)}
-                  </p>
-                )}
+                {(() => {
+                  // Get extract from source to ensure it's always available
+                  const cardIndex = gameState.currentCardIndex;
+                  const sourceCard = game?.cards?.[cardIndex];
+                  const cardExtract = sourceCard?.extract;
+                  const cardFullExtract = sourceCard?.fullExtract;
+                  if (cardExtract) {
+                    return (
+                      <p className="linkquest-card-extract">
+                        {decodeHtmlEntities(cardFullExtract || cardExtract)}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
         ) : null}
         </div>
         
-        {/* Skip button under card */}
-        {currentCard && !showFeedback && !feedbackRef.current && !isSwipingAway && (
-          <button 
-            className="linkquest-skip-button"
-            onClick={handleSkip}
-          >
-            Skip for now
-          </button>
-        )}
-        
         {/* Score tracker */}
         {!showFeedback && game && (
           <div className="linkquest-actions">
+            {/* Shuffle button - only show if there are other unanswered cards available */}
+            {game && (() => {
+              const currentIndex = gameState.currentCardIndex;
+              const availableIndices = game.cards
+                .map((_, index) => index)
+                .filter(index => 
+                  index !== currentIndex && 
+                  gameState.answers[index] === undefined
+                );
+              // Only show shuffle button if there are other cards available
+              return availableIndices.length > 0 ? (
+                <button 
+                  className="linkquest-shuffle-button"
+                  onClick={handleShuffle}
+                  title="Shuffle to a random card"
+                >
+                  <i className="fas fa-random"></i>
+                </button>
+              ) : null;
+            })()}
             <div className="linkquest-score-tracker">
               {Array.from({ length: game.cards.length }, (_, i) => {
                 const answer = gameState.answers[i];
-                if (answer === true) {
-                  // Correct answer - green checkmark
-                  return (
-                    <div key={i} className="linkquest-score-dot linkquest-score-correct">
-                      <i className="fas fa-check"></i>
-                    </div>
-                  );
-                } else if (answer === false) {
-                  // Incorrect answer - red X
-                  return (
-                    <div key={i} className="linkquest-score-dot linkquest-score-incorrect">
-                      <i className="fas fa-times"></i>
-                    </div>
-                  );
-                } else {
-                  // Not answered yet - empty dot
-                  return (
-                    <div key={i} className="linkquest-score-dot linkquest-score-empty">
-                    </div>
-                  );
-                }
+                const card = game.cards[i];
+                const isLinked = card?.isLinked;
+                
+                return (
+                  <div key={i} className="linkquest-score-item">
+                    {answer === true ? (
+                      // Correct answer - green checkmark
+                      <div className="linkquest-score-dot linkquest-score-correct">
+                        <i className="fas fa-check"></i>
+                      </div>
+                    ) : answer === false ? (
+                      // Incorrect answer - red X
+                      <div className="linkquest-score-dot linkquest-score-incorrect">
+                        <i className="fas fa-times"></i>
+                      </div>
+                    ) : (
+                      // Not answered yet - empty dot
+                      <div className="linkquest-score-dot linkquest-score-empty">
+                      </div>
+                    )}
+                    {/* Show linked/not linked indicator below if answered */}
+                    {answer !== undefined && (
+                      <div className={`linkquest-score-link-indicator ${isLinked ? 'linked' : 'not-linked'}`}>
+                        <i className={`fas ${isLinked ? 'fa-link' : 'fa-unlink'}`}></i>
+                      </div>
+                    )}
+                  </div>
+                );
               })}
             </div>
           </div>

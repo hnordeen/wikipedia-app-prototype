@@ -1,23 +1,48 @@
 .games-page {
-  padding: 16px 16px 80px;
+  padding: 10px 0.5rem 80px;
+  background: #f8f9fa;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   max-width: 960px;
   margin: 0 auto;
 }
 
-.games-header {
-  margin-bottom: 24px;
+/* Match other tabs' title design */
+.title-container {
+  display: flex;
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  width: 100%; 
+  margin-bottom: 15px;
+  flex-shrink: 0;
 }
 
-.games-title {
-  font-size: 28px;
-  font-weight: 600;
-  margin: 0 0 4px;
+.page-logo {
+  width: 30px;  
+  height: 30px; 
+  margin-bottom: 5px;
+}
+
+.page-title {
+  color: var(--primary-text-color, #202122); 
+  font-size: 2.25rem; 
+  font-weight: 700;   
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 0;
+  margin-bottom: 0;
+  flex-shrink: 0; 
 }
 
 .games-subtitle {
-  margin: 0;
+  margin: 0 0 24px;
   color: #555;
   font-size: 14px;
+  text-align: center;
 }
 
 .games-grid {
@@ -35,6 +60,11 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+
+.game-card.game-card-knowledge-web {
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f0ff 100%) !important;
+  border-color: rgba(51, 102, 204, 0.2) !important;
 }
 
 .game-card-header {
@@ -131,6 +161,11 @@
     background: #111827;
     border-color: #1f2937;
     box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+
+  .game-card.game-card-knowledge-web {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2a4a6f 100%) !important;
+    border-color: rgba(51, 102, 204, 0.4) !important;
   }
 
   .games-subtitle,
