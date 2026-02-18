@@ -20,8 +20,8 @@ const NavBar: React.FC = () => {
   return (
     <nav className="nav-bar">
       <Link 
-        to="/" 
-        className={`nav-item ${isActive('/') ? 'active' : ''}`}
+        to="/explore" 
+        className={`nav-item ${isActive('/explore') ? 'active' : ''}`}
       >
         <svg className="nav-icon" viewBox="0 0 24 24">
           <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/>

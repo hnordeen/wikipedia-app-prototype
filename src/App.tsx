@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
@@ -23,7 +23,8 @@ const AppContent: React.FC = () => {
     <>
       {!shouldHideNavBar && <NavBar />}
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<Navigate to="/games" replace />} />
+      <Route path="/explore" element={<HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/history" element={<HistoryPage />} />
         <Route path="/games" element={<GamesPage />} />
