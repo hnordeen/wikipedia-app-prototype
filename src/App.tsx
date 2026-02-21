@@ -11,6 +11,7 @@ import LinkQuestResultsPage from './pages/LinkQuestResultsPage';
 import LinkQuestExplorePage from './pages/LinkQuestExplorePage';
 import WhatInTheWikiPage from './pages/WhatInTheWikiPage';
 import KnowledgeWebPage from './pages/KnowledgeWebPage';
+import KnowledgeWebResultsPage from './pages/KnowledgeWebResultsPage';
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -33,7 +34,7 @@ const AppContent: React.FC = () => {
         <Route path="/games/linkquest/explore" element={<LinkQuestExplorePage />} />
         <Route path="/games/what-in-the-wiki" element={<WhatInTheWikiPage />} />
         <Route path="/games/knowledge-web" element={<KnowledgeWebPage />} />
-        <Route path="/games/knowledge-web/results" element={<KnowledgeWebPage />} />
+        <Route path="/games/knowledge-web/results" element={<KnowledgeWebResultsPage />} />
       <Route path="/article/:title" element={<ArticlePage />} />
     </Routes>
     </>

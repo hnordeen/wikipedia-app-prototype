@@ -7,10 +7,11 @@ import {
   validateSubmission,
   calculateKnowledgeWebScore,
   getUtcDateKey,
+  cleanupOldKnowledgeWebGameStates,
   KnowledgeWebPuzzle,
   KnowledgeWebGameState,
 } from '../services/knowledgeWebService';
-import { getArticleExtract } from '../api/wikipedia';
+import { getArticleExtract, getArticleShortDescription } from '../api/wikipedia';
 import './KnowledgeWebPage.css';
 
 const KnowledgeWebPage: React.FC = () => {
@@ -25,13 +26,17 @@ const KnowledgeWebPage: React.FC = () => {
   const [draggedFromSlot, setDraggedFromSlot] = useState<number | null>(null); // Track which slot we're dragging from
   const touchStartRef = useRef<{ x: number; y: number; article: string; fromSlot?: number } | null>(null);
   const draggedElementRef = useRef<HTMLElement | null>(null);
+  const isDraggingRef = useRef<boolean>(false); // Track dragging state immediately (not async)
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null); // Position of dragged item during touch drag
   const [showSplash, setShowSplash] = useState(true);
   const [previewArticle, setPreviewArticle] = useState<string | null>(null);
   const [previewExtract, setPreviewExtract] = useState<string | null>(null);
+  const [previewDescription, setPreviewDescription] = useState<string | null>(null);
   const [previewPosition, setPreviewPosition] = useState<{ x: number; y: number } | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previewLoadingRef = useRef<boolean>(false);
   const extractCacheRef = useRef<Map<string, string | null>>(new Map());
+  const descriptionCacheRef = useRef<Map<string, string | null>>(new Map());
 
   const dateKey = getUtcDateKey();
 
@@ -43,24 +48,73 @@ const KnowledgeWebPage: React.FC = () => {
       ...puzzle.connections.map(c => c.connectingArticle),
     ];
 
-    // Load all extracts in parallel
+    console.log(`[Preload] Preloading extracts for ${articlesToLoad.length} articles:`, articlesToLoad);
+
+    // Load all extracts and descriptions in parallel
     const extractPromises = articlesToLoad.map(async (article) => {
-      // Skip if already cached
-      if (extractCacheRef.current.has(article)) {
+      // Check what's already cached
+      const hasExtract = extractCacheRef.current.has(article);
+      const hasDescription = descriptionCacheRef.current.has(article);
+      
+      // Skip if both are already cached
+      if (hasExtract && hasDescription) {
+        console.log(`[Preload] Already cached: "${article}"`);
         return;
       }
+      
       try {
-        const extract = await getArticleExtract(article);
-        extractCacheRef.current.set(article, extract);
+        // Load only what's missing in parallel
+        const promises: Promise<any>[] = [];
+        if (!hasExtract) {
+          promises.push(getArticleExtract(article).then(extract => ({ type: 'extract', value: extract })));
+        }
+        if (!hasDescription) {
+          promises.push(getArticleShortDescription(article).then(description => ({ type: 'description', value: description })));
+        }
+        
+        if (promises.length === 0) {
+          return; // Both already cached
+        }
+        
+        const results = await Promise.all(promises);
+        
+        results.forEach((result) => {
+          if (result.type === 'extract') {
+            const extract = result.value;
+            if (extract) {
+              console.log(`[Preload] Successfully loaded extract for "${article}" (${extract.length} chars)`);
+              extractCacheRef.current.set(article, extract);
+            } else {
+              console.warn(`[Preload] No extract returned for "${article}"`);
+              extractCacheRef.current.set(article, null);
+            }
+          } else if (result.type === 'description') {
+            const description = result.value;
+            if (description) {
+              console.log(`[Preload] Successfully loaded description for "${article}"`);
+              descriptionCacheRef.current.set(article, description);
+            } else {
+              console.warn(`[Preload] No description returned for "${article}"`);
+              descriptionCacheRef.current.set(article, null);
+            }
+          }
+        });
       } catch (error) {
-        console.error(`Error preloading extract for "${article}":`, error);
-        extractCacheRef.current.set(article, null);
+        console.error(`[Preload] Error preloading extract/description for "${article}":`, error);
+        if (!hasExtract) {
+          extractCacheRef.current.set(article, null);
+        }
+        if (!hasDescription) {
+          descriptionCacheRef.current.set(article, null);
+        }
       }
     });
 
     // Don't await - let it load in background
-    Promise.all(extractPromises).catch(err => {
-      console.error('Error preloading extracts:', err);
+    Promise.all(extractPromises).then(() => {
+      console.log(`[Preload] Finished preloading all extracts`);
+    }).catch(err => {
+      console.error('[Preload] Error preloading extracts:', err);
     });
   }, []);
 
@@ -70,13 +124,16 @@ const KnowledgeWebPage: React.FC = () => {
       setError(null);
 
       try {
-        // Check for existing game state
+        // Clean up old game states from previous days
+        cleanupOldKnowledgeWebGameStates(dateKey);
+        
+        // Check for existing game state for today
         const existingState = getKnowledgeWebGameState(dateKey);
         
         // Generate or load puzzle
         const dailyPuzzle = await generateDailyKnowledgeWebPuzzle();
         if (!dailyPuzzle) {
-          setError("Couldn't load today's puzzle. Please try again.");
+          setError("Couldn't load today's puzzle. The featured article may not have enough connections. Please try again later.");
           setLoading(false);
           return;
         }
@@ -101,7 +158,7 @@ const KnowledgeWebPage: React.FC = () => {
             is_complete: false,
             final_score: null,
             perfect_first_attempt: false,
-            attempts_remaining: 3,
+            attempts_remaining: 999, // Unlimited tries
           };
           setGameState(initialState);
           saveKnowledgeWebGameState(dateKey, initialState);
@@ -113,7 +170,8 @@ const KnowledgeWebPage: React.FC = () => {
         setLoading(false);
       } catch (err) {
         console.error('Error loading knowledge web game:', err);
-        setError("Couldn't load today's puzzle. Please try again.");
+        const errorMessage = err instanceof Error ? err.message : "Couldn't load today's puzzle. Please try again.";
+        setError(errorMessage);
         setLoading(false);
       }
     };
@@ -138,82 +196,212 @@ const KnowledgeWebPage: React.FC = () => {
   };
 
   const loadPreviewExtract = useCallback((article: string) => {
-    // Check cache first
-    const cachedExtract = extractCacheRef.current.get(article);
+    // Normalize the article title - use exact title from puzzle data
+    // This ensures we use the actual article title, not any link text variations
+    let exactTitle = article;
+    if (puzzle) {
+      // Check if it's the featured article
+      if (article === puzzle.featured_article.title || 
+          article.toLowerCase() === puzzle.featured_article.title.toLowerCase()) {
+        exactTitle = puzzle.featured_article.title;
+      } else {
+        // Check if it's a surrounding article
+        const surroundingArticle = puzzle.surrounding_articles.find(
+          a => a.title === article || a.title.toLowerCase() === article.toLowerCase()
+        );
+        if (surroundingArticle) {
+          exactTitle = surroundingArticle.title;
+        } else {
+          // Check if it's a connection article
+          const connectionInfo = puzzle.connections.find(
+            c => c.connectingArticle === article || c.connectingArticle.toLowerCase() === article.toLowerCase()
+          );
+          if (connectionInfo) {
+            exactTitle = connectionInfo.connectingArticle;
+          } else {
+            // If we can't find it, log a warning but still use the original title
+            console.warn(`[Preview] Could not find exact title for "${article}" in puzzle data, using as-is`);
+          }
+        }
+      }
+    }
+    
+    console.log(`[Preview] Loading extract for article: "${article}" -> normalized to: "${exactTitle}"`);
+    
+    // If we couldn't normalize, use the original title
+    const titleToUse = exactTitle || article;
+    if (!titleToUse || titleToUse.trim() === '') {
+      console.error(`[Preview] Invalid article title: "${article}"`);
+      return;
+    }
+    
+    // Check cache first using the title we'll use
+    const cachedExtract = extractCacheRef.current.get(titleToUse);
+    const cachedDescription = descriptionCacheRef.current.get(titleToUse);
+    
+    // Use cached values immediately if available
     if (cachedExtract !== undefined) {
       setPreviewExtract(cachedExtract);
+    }
+    if (cachedDescription !== undefined) {
+      setPreviewDescription(cachedDescription);
+    }
+    
+    // If both are cached, we're done
+    if (cachedExtract !== undefined && cachedDescription !== undefined) {
+      console.log(`[Preview] Found cached extract and description for "${titleToUse}"`);
       return;
     }
 
-    // If not in cache, load it (shouldn't happen if preload worked, but fallback)
-    if (previewLoadingRef.current) return;
+    // If not in cache, load what's missing (shouldn't happen if preload worked, but fallback)
+    if (previewLoadingRef.current) {
+      console.log(`[Preview] Already loading extract, skipping`);
+      return;
+    }
     previewLoadingRef.current = true;
-    getArticleExtract(article)
-      .then((extract) => {
-        extractCacheRef.current.set(article, extract);
-        setPreviewExtract(extract);
+    console.log(`[Preview] Fetching missing data from API for "${titleToUse}"`);
+    
+    // Load only what's missing in parallel
+    const promises: Promise<any>[] = [];
+    if (cachedExtract === undefined) {
+      promises.push(getArticleExtract(titleToUse).then(extract => ({ type: 'extract', value: extract })));
+    }
+    if (cachedDescription === undefined) {
+      promises.push(getArticleShortDescription(titleToUse).then(description => ({ type: 'description', value: description })));
+    }
+    
+    Promise.all(promises)
+      .then((results) => {
+        results.forEach((result) => {
+          if (result.type === 'extract') {
+            const extract = result.value;
+            if (extract) {
+              console.log(`[Preview] Successfully loaded extract for "${titleToUse}" (${extract.length} chars)`);
+              extractCacheRef.current.set(titleToUse, extract);
+              setPreviewExtract(extract);
+            } else {
+              console.warn(`[Preview] No extract returned for "${titleToUse}" - API returned null`);
+              extractCacheRef.current.set(titleToUse, null);
+              setPreviewExtract(null);
+            }
+          } else if (result.type === 'description') {
+            const description = result.value;
+            if (description) {
+              console.log(`[Preview] Successfully loaded description for "${titleToUse}"`);
+              descriptionCacheRef.current.set(titleToUse, description);
+              setPreviewDescription(description);
+            } else {
+              console.warn(`[Preview] No description returned for "${titleToUse}" - API returned null`);
+              descriptionCacheRef.current.set(titleToUse, null);
+              setPreviewDescription(null);
+            }
+          }
+        });
       })
       .catch((error) => {
-        console.error('Error loading preview extract:', error);
-        extractCacheRef.current.set(article, null);
-        setPreviewExtract(null);
+        console.error(`[Preview] Error loading extract/description for "${titleToUse}":`, error);
+        console.error(`[Preview] Error details:`, error instanceof Error ? error.message : String(error));
+        if (cachedExtract === undefined) {
+          extractCacheRef.current.set(titleToUse, null);
+          setPreviewExtract(null);
+        }
+        if (cachedDescription === undefined) {
+          descriptionCacheRef.current.set(titleToUse, null);
+          setPreviewDescription(null);
+        }
       })
       .finally(() => {
         previewLoadingRef.current = false;
       });
-  }, []);
+  }, [puzzle]);
 
   const handlePreviewStart = useCallback((e: React.MouseEvent | React.TouchEvent, article: string) => {
-    // Don't show preview if we're currently dragging
-    if (draggedArticle || touchDragging) {
+    // Don't show preview if we're currently dragging or about to drag
+    if (draggedArticle || touchDragging || isDraggingRef.current) {
+      console.log(`[Preview] Skipping preview for "${article}" - dragging active`);
       return;
     }
+    
+    // Don't show preview if this is a mouse event and we're in the middle of a drag operation
+    if ('clientX' in e && draggedArticle) {
+      console.log(`[Preview] Skipping preview for "${article}" - mouse drag active`);
+      return;
+    }
+    
+    console.log(`[Preview] Starting preview for article: "${article}"`);
     
     // Safety check: ensure currentTarget exists
     if (!e.currentTarget) {
       return;
     }
     
-    let rect: DOMRect;
-    try {
-      rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    } catch (error) {
-      // Element might have been removed from DOM
-      console.warn('Could not get bounding rect for preview:', error);
-      return;
+    // Get mouse/touch position
+    let mouseX: number, mouseY: number;
+    if ('touches' in e && e.touches.length > 0) {
+      // Touch event
+      mouseX = e.touches[0].clientX;
+      mouseY = e.touches[0].clientY;
+    } else if ('clientX' in e) {
+      // Mouse event
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    } else {
+      // Fallback to element center
+      let rect: DOMRect;
+      try {
+        rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        mouseX = rect.left + rect.width / 2;
+        mouseY = rect.top + rect.height / 2;
+      } catch (error) {
+        console.warn('Could not get bounding rect for preview:', error);
+        return;
+      }
     }
     
     const previewCardWidth = 280;
     const previewCardHeight = 300; // Approximate height
     const margin = 12;
-    
-    // Calculate initial position (centered above the element)
-    let x = rect.left + rect.width / 2;
-    let y = rect.top;
+    const offset = 16; // Offset from cursor/tap position
     
     // Get viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
+    // Start with position near the cursor/tap (offset to the right and below)
+    let x = mouseX + offset;
+    let y = mouseY + offset;
+    
     // Adjust horizontal position to keep in viewport
-    if (x - previewCardWidth / 2 < margin) {
-      x = previewCardWidth / 2 + margin;
-    } else if (x + previewCardWidth / 2 > viewportWidth - margin) {
-      x = viewportWidth - previewCardWidth / 2 - margin;
+    // Prefer showing to the right, but if not enough space, show to the left
+    if (x + previewCardWidth > viewportWidth - margin) {
+      // Not enough space on right, show to the left of cursor
+      x = mouseX - previewCardWidth - offset;
+      // If still doesn't fit, align to right edge
+      if (x < margin) {
+        x = viewportWidth - previewCardWidth - margin;
+      }
+    } else if (x < margin) {
+      // Not enough space on left, align to left edge
+      x = margin;
     }
     
     // Adjust vertical position to keep in viewport
-    // If there's not enough space above, show below instead
-    if (y - previewCardHeight - margin < 0) {
-      y = rect.bottom + margin;
-    } else {
-      y = rect.top - margin;
+    // Prefer showing below, but if not enough space, show above
+    if (y + previewCardHeight > viewportHeight - margin) {
+      // Not enough space below, show above cursor
+      y = mouseY - previewCardHeight - offset;
+      // If still doesn't fit, align to bottom edge
+      if (y < margin) {
+        y = viewportHeight - previewCardHeight - margin;
+      }
+    } else if (y < margin) {
+      // Not enough space above, align to top edge
+      y = margin;
     }
     
-    // If still doesn't fit below, show above but adjust
-    if (y + previewCardHeight > viewportHeight - margin) {
-      y = viewportHeight - previewCardHeight - margin;
-    }
+    // Final check: ensure it's fully within viewport
+    x = Math.max(margin, Math.min(x, viewportWidth - previewCardWidth - margin));
+    y = Math.max(margin, Math.min(y, viewportHeight - previewCardHeight - margin));
     
     setPreviewPosition({ x, y });
     setPreviewArticle(article);
@@ -224,6 +412,7 @@ const KnowledgeWebPage: React.FC = () => {
   const handlePreviewEnd = useCallback(() => {
     setPreviewArticle(null);
     setPreviewExtract(null);
+    setPreviewDescription(null);
     setPreviewPosition(null);
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -231,13 +420,40 @@ const KnowledgeWebPage: React.FC = () => {
     }
   }, []);
 
-  const handleLongPressStart = useCallback((e: React.TouchEvent, article: string) => {
-    // Don't prevent default - allow scrolling
+  const handleTouchTap = useCallback((e: React.TouchEvent, article: string) => {
+    // Show preview immediately on tap
     e.stopPropagation();
-    longPressTimerRef.current = setTimeout(() => {
-      handlePreviewStart(e, article);
-    }, 500); // 500ms for long press
-  }, [handlePreviewStart]);
+    console.log(`[TouchTap] Tapped on article: "${article}"`);
+    // Normalize the article title to match puzzle data
+    let exactTitle = article;
+    if (puzzle) {
+      // Check if it's the featured article
+      if (article === puzzle.featured_article.title || 
+          article.toLowerCase() === puzzle.featured_article.title.toLowerCase()) {
+        exactTitle = puzzle.featured_article.title;
+      } else {
+        // Check if it's a surrounding article
+        const surroundingArticle = puzzle.surrounding_articles.find(
+          a => a.title === article || a.title.toLowerCase() === article.toLowerCase()
+        );
+        if (surroundingArticle) {
+          exactTitle = surroundingArticle.title;
+        } else {
+          // Check if it's a connection article
+          const connectionInfo = puzzle.connections.find(
+            c => c.connectingArticle === article || c.connectingArticle.toLowerCase() === article.toLowerCase()
+          );
+          if (connectionInfo) {
+            exactTitle = connectionInfo.connectingArticle;
+          }
+        }
+      }
+    }
+    if (exactTitle !== article) {
+      console.log(`[TouchTap] Normalized "${article}" to "${exactTitle}"`);
+    }
+    handlePreviewStart(e, exactTitle);
+  }, [handlePreviewStart, puzzle]);
 
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -305,50 +521,83 @@ const KnowledgeWebPage: React.FC = () => {
       article: article,
       fromSlot: fromSlot
     };
-    setDraggedArticle(article);
-    setDraggedFromSlot(fromSlot || null);
-    setTouchDragging(true);
+    // Reset dragging state
+    isDraggingRef.current = false;
     draggedElementRef.current = e.currentTarget as HTMLElement;
-    if (draggedElementRef.current) {
-      draggedElementRef.current.classList.add('touching');
-    }
-    e.preventDefault();
+    // Don't prevent default - allow scrolling to work
   };
 
   useEffect(() => {
-    if (!touchDragging) return;
-
     const handleTouchMoveGlobal = (e: TouchEvent) => {
       if (!touchStartRef.current) return;
       
-      // Cancel long press if user moves finger (they're dragging, not long pressing)
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+      
+      // Determine if user is dragging vs scrolling
+      // If moving mostly vertically or moving away from pool area, it's a drag
+      // If moving mostly horizontally within pool area, it's scrolling
+      const isVerticalMovement = deltaY > deltaX;
+      const isSignificantMovement = deltaX > 15 || deltaY > 15;
+      
+      // Check if we're still in the pool area (horizontal scrolling)
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const isInPoolArea = element?.closest('.knowledge-web-pool-items');
+      const isHorizontalScroll = !isVerticalMovement && isInPoolArea && deltaX > 5 && deltaY < 10;
+      
+      // If it's a horizontal scroll within the pool, don't interfere
+      if (isHorizontalScroll && !touchDragging) {
+        return; // Allow native scrolling
       }
       
-      const touch = e.touches[0];
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      // Otherwise, treat as drag if there's significant movement
+      if (isSignificantMovement && !touchDragging) {
+        // Hide preview when drag is detected
+        handlePreviewEnd();
+        setPreviewArticle(null);
+        setPreviewExtract(null);
+        setPreviewPosition(null);
+        // Start dragging
+        setDraggedArticle(touchStartRef.current.article);
+        setDraggedFromSlot(touchStartRef.current.fromSlot || null);
+        setTouchDragging(true);
+        isDraggingRef.current = true;
+        if (draggedElementRef.current) {
+          draggedElementRef.current.classList.add('touching');
+        }
+        // Cancel long press
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
       
-      // Find if we're over a connection slot
-      const connectionSlot = element?.closest('.knowledge-web-connection-slot');
-      if (connectionSlot) {
-        const slotWrapper = connectionSlot.closest('.knowledge-web-connection-slot-wrapper');
-        if (slotWrapper) {
-          const slotId = slotWrapper.getAttribute('data-slot-id');
-          if (slotId) {
-            const targetSlotId = parseInt(slotId);
-            // Don't highlight the slot we're dragging from
-            if (targetSlotId !== touchStartRef.current?.fromSlot) {
-              setHoveredSlot(targetSlotId);
+      if (touchDragging) {
+        // Prevent default to stop scrolling when dragging
+        e.preventDefault();
+        
+        // Update drag position for visual feedback
+        setDragPosition({ x: touch.clientX, y: touch.clientY });
+        
+        // Find if we're over a connection slot
+        const connectionSlot = element?.closest('.knowledge-web-connection-slot');
+        if (connectionSlot) {
+          const slotWrapper = connectionSlot.closest('.knowledge-web-connection-slot-wrapper');
+          if (slotWrapper) {
+            const slotId = slotWrapper.getAttribute('data-slot-id');
+            if (slotId) {
+              const targetSlotId = parseInt(slotId);
+              // Don't highlight the slot we're dragging from
+              if (targetSlotId !== touchStartRef.current?.fromSlot) {
+                setHoveredSlot(targetSlotId);
+              }
             }
           }
+        } else {
+          setHoveredSlot(null);
         }
-      } else {
-        setHoveredSlot(null);
       }
-      
-      e.preventDefault();
     };
 
     const handleTouchEndGlobal = (e: TouchEvent) => {
@@ -372,6 +621,7 @@ const KnowledgeWebPage: React.FC = () => {
               setDraggedArticle(null);
               setDraggedFromSlot(null);
               setHoveredSlot(null);
+              setDragPosition(null); // Clear drag position
               if (draggedElementRef.current) {
                 draggedElementRef.current.classList.remove('touching');
               }
@@ -397,12 +647,18 @@ const KnowledgeWebPage: React.FC = () => {
       setDraggedArticle(null);
       setDraggedFromSlot(null);
       setHoveredSlot(null);
+      setDragPosition(null); // Clear drag position
       if (draggedElementRef.current) {
         draggedElementRef.current.classList.remove('touching');
       }
       draggedElementRef.current = null;
     };
 
+    document.addEventListener('touchmove', handleTouchMoveGlobal, { passive: false });
+    document.addEventListener('touchend', handleTouchEndGlobal);
+    document.addEventListener('touchcancel', handleTouchEndGlobal);
+
+    // Always add listeners - they'll check touchStartRef internally
     document.addEventListener('touchmove', handleTouchMoveGlobal, { passive: false });
     document.addEventListener('touchend', handleTouchEndGlobal);
     document.addEventListener('touchcancel', handleTouchEndGlobal);
@@ -476,9 +732,9 @@ const KnowledgeWebPage: React.FC = () => {
     const updatedState: KnowledgeWebGameState = {
       ...gameState,
       submissions: [...gameState.submissions, newSubmission],
-      attempts_remaining: gameState.attempts_remaining - 1,
-      is_complete: isPerfect || gameState.attempts_remaining === 1,
-      final_score: isPerfect || gameState.attempts_remaining === 1 ? results.filter(r => r.is_correct).length : null,
+      attempts_remaining: gameState.attempts_remaining - 1, // Still decrement for tracking, but won't end game
+      is_complete: isPerfect, // Only complete when all answers are correct
+      final_score: isPerfect ? results.filter(r => r.is_correct).length : null,
       perfect_first_attempt: isFirstAttempt && isPerfect,
     };
 
@@ -497,8 +753,8 @@ const KnowledgeWebPage: React.FC = () => {
     setGameState(updatedState);
     saveKnowledgeWebGameState(dateKey, updatedState);
 
-    // Navigate to results if complete
-    if (updatedState.is_complete) {
+    // Navigate to results if all answers are correct
+    if (isPerfect) {
       navigate('/games/knowledge-web/results', { state: { puzzle, gameState: updatedState } });
     }
   };
@@ -547,6 +803,16 @@ const KnowledgeWebPage: React.FC = () => {
 
   const allFilled = gameState.current_connections.every(conn => conn.connecting_article !== null);
   const availableArticles = getAvailableArticles();
+  const attempts = gameState.submissions.length;
+  
+  // Check if all current connections are correct
+  const allCorrect = gameState.submissions.length > 0 && (() => {
+    const lastSubmission = gameState.submissions[gameState.submissions.length - 1];
+    return lastSubmission.results.every(r => r.is_correct);
+  })();
+  
+  // Show button if all filled and not all correct (or no submissions yet)
+  const showCheckButton = allFilled && (!allCorrect || gameState.submissions.length === 0);
 
   // Splash screen
   if (showSplash) {
@@ -561,7 +827,6 @@ const KnowledgeWebPage: React.FC = () => {
               <li>Drag articles from the pool to the connection slots along each spoke</li>
               <li>Each connection links the featured article to a surrounding topic</li>
               <li>Fill all 4 connections, then check your answers</li>
-              <li>You have 3 attempts to get them all correct</li>
             </ol>
           </div>
           <button 
@@ -585,18 +850,39 @@ const KnowledgeWebPage: React.FC = () => {
       >
         <i className="fas fa-times"></i>
       </button>
-      <div className="knowledge-web-visualization">
+      {attempts > 0 && (
+        <div className="knowledge-web-attempts-counter">
+          Try {attempts}
+        </div>
+      )}
+      <div 
+        className="knowledge-web-visualization"
+        onClick={(e) => {
+          // Close preview if clicking outside the preview card
+          // Cards have their own onClick handlers that will handle showing/closing preview
+          const target = e.target as HTMLElement;
+          if (!target.closest('.knowledge-web-preview-card')) {
+            handlePreviewEnd();
+          }
+        }}
+      >
           {/* Center Node */}
           <div className="knowledge-web-center">
             <div 
               className={`knowledge-web-center-node ${!puzzle.featured_article.thumbnail ? 'no-image' : ''}`}
               onTouchStart={(e) => {
-                handleLongPressStart(e, puzzle.featured_article.title);
+                handleTouchTap(e, puzzle.featured_article.title);
               }}
-              onTouchEnd={handleLongPressEnd}
-              onTouchCancel={handleLongPressEnd}
-              onMouseEnter={(e) => handlePreviewStart(e, puzzle.featured_article.title)}
-              onMouseLeave={handlePreviewEnd}
+              onTouchEnd={handlePreviewEnd}
+              onTouchCancel={handlePreviewEnd}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (previewArticle === puzzle.featured_article.title) {
+                  handlePreviewEnd();
+                } else {
+                  handlePreviewStart(e, puzzle.featured_article.title);
+                }
+              }}
             >
               {puzzle.featured_article.thumbnail && (
                 <img 
@@ -605,7 +891,12 @@ const KnowledgeWebPage: React.FC = () => {
                   className="knowledge-web-node-image"
                 />
               )}
-              <div className="knowledge-web-node-title">{puzzle.featured_article.title}</div>
+              <div className="knowledge-web-center-node-content">
+                <div className="knowledge-web-node-title">{puzzle.featured_article.title}</div>
+                {puzzle.featured_article.description && (
+                  <div className="knowledge-web-center-node-description">{puzzle.featured_article.description}</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -615,8 +906,15 @@ const KnowledgeWebPage: React.FC = () => {
             const isLocked = isConnectionLocked(article.id);
             const isHovered = hoveredSlot === article.id;
             
-            // Get connection article info for image
-            const connectionInfo = puzzle.connections.find(c => c.surroundingArticleId === article.id);
+            // Get connection article info for image - find by the actual connecting article title, not the slot
+            const connectionInfo = connection 
+              ? puzzle.connections.find(c => c.connectingArticle === connection)
+              : puzzle.connections.find(c => c.surroundingArticleId === article.id);
+            
+            // Debug: log if connectionInfo is missing when we have a connection
+            if (connection && !connectionInfo) {
+              console.warn(`[KnowledgeWeb] Could not find connectionInfo for connection: "${connection}"`);
+            }
             
             // Position nodes in corners
             const centerX = 50;
@@ -714,22 +1012,21 @@ const KnowledgeWebPage: React.FC = () => {
                       if (connection && !isLocked) {
                         handleTouchStart(e, connection, article.id);
                       }
-                      // Start long press for preview
+                      // Show preview on tap
                       if (connection) {
-                        handleLongPressStart(e, connection);
+                        handleTouchTap(e, connection);
                       }
                     }}
-                    onTouchEnd={handleLongPressEnd}
-                    onTouchCancel={handleLongPressEnd}
-                    onMouseEnter={(e) => {
+                    onTouchEnd={handlePreviewEnd}
+                    onTouchCancel={handlePreviewEnd}
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (connection) {
-                        handlePreviewStart(e, connection);
-                      }
-                    }}
-                    onMouseLeave={handlePreviewEnd}
-                    onClick={() => {
-                      if (connection && !isLocked) {
-                        handleRemoveConnection(article.id);
+                        if (previewArticle === connection) {
+                          handlePreviewEnd();
+                        } else {
+                          handlePreviewStart(e, connection);
+                        }
                       }
                     }}
                   >
@@ -742,11 +1039,7 @@ const KnowledgeWebPage: React.FC = () => {
                             className="knowledge-web-connection-image"
                           />
                         )}
-                        <span className="knowledge-web-connection-text">{connection}</span>
-                        {!isLocked && <button className="knowledge-web-remove-btn" onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveConnection(article.id);
-                        }}>×</button>}
+                        <span className="knowledge-web-connection-text">{connectionInfo?.connectingArticle || connection}</span>
                       </>
                     ) : (
                       <span className="knowledge-web-placeholder">
@@ -769,28 +1062,23 @@ const KnowledgeWebPage: React.FC = () => {
                     className={`knowledge-web-surrounding-node ${!article.thumbnail ? 'no-image' : ''}`}
                     onTouchStart={(e) => {
                       e.stopPropagation();
-                      handleLongPressStart(e, article.title);
+                      handleTouchTap(e, article.title);
                     }}
                     onTouchEnd={(e) => {
                       e.stopPropagation();
-                      handleLongPressEnd();
+                      handlePreviewEnd();
                     }}
                     onTouchCancel={(e) => {
                       e.stopPropagation();
-                      handleLongPressEnd();
-                    }}
-                    onTouchMove={(e) => {
-                      // Cancel long press if user moves (they're not trying to preview)
-                      e.stopPropagation();
-                      handleLongPressEnd();
-                    }}
-                    onMouseEnter={(e) => {
-                      e.stopPropagation();
-                      handlePreviewStart(e, article.title);
-                    }}
-                    onMouseLeave={(e) => {
-                      e.stopPropagation();
                       handlePreviewEnd();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (previewArticle === article.title) {
+                        handlePreviewEnd();
+                      } else {
+                        handlePreviewStart(e, article.title);
+                      }
                     }}
                   >
                     {article.thumbnail && (
@@ -821,20 +1109,37 @@ const KnowledgeWebPage: React.FC = () => {
                   onDragStart={() => handleDragStart(article)}
                   onDragEnd={handleDragEnd}
                   onTouchStart={(e) => {
-                    // Start long press timer for preview
-                    handleLongPressStart(e, article);
-                    // Also prepare for drag (but drag will be handled by global touchmove)
+                    // Don't stop propagation - allow container scrolling
+                    handleTouchStart(e, article);
+                    // Show preview on tap
+                    handleTouchTap(e, article);
                   }}
                   onTouchEnd={(e) => {
-                    handleLongPressEnd();
+                    // Clean up if not dragging
+                    if (!touchDragging && touchStartRef.current) {
+                      handlePreviewEnd();
+                      touchStartRef.current = null;
+                    }
                   }}
-                  onTouchCancel={handleLongPressEnd}
+                  onTouchCancel={(e) => {
+                    // Clean up if not dragging
+                    if (!touchDragging && touchStartRef.current) {
+                      handlePreviewEnd();
+                      touchStartRef.current = null;
+                    }
+                  }}
                   onContextMenu={(e) => {
                     // Prevent context menu on long press
                     e.preventDefault();
                   }}
-                  onMouseEnter={(e) => handlePreviewStart(e, article)}
-                  onMouseLeave={handlePreviewEnd}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (previewArticle === article) {
+                      handlePreviewEnd();
+                    } else {
+                      handlePreviewStart(e, article);
+                    }
+                  }}
                 >
                   {connectionInfo?.thumbnail && (
                     <img
@@ -843,22 +1148,57 @@ const KnowledgeWebPage: React.FC = () => {
                       className="knowledge-web-pool-item-image"
                     />
                   )}
-                  <span className="knowledge-web-pool-item-text">{article}</span>
+                  <span className="knowledge-web-pool-item-text">{connectionInfo?.connectingArticle || article}</span>
                 </div>
               );
             })}
           </div>
       </div>
 
-      {/* Fixed submit button at bottom - only visible when all filled */}
-      {allFilled && !gameState.is_complete && (
+      {/* Fixed submit button at bottom - visible when all filled and not all correct */}
+      {showCheckButton && (
         <div className="knowledge-web-submit-container">
           <button
             className="knowledge-web-submit-btn"
             onClick={handleSubmit}
           >
-            {gameState.submissions.length === 0 ? 'Check Answers' : 'Submit Again'}
+            {gameState.submissions.length === 0 ? 'Check Answers' : 'Check Again'}
           </button>
+        </div>
+      )}
+
+      {/* Drag indicator for mobile touch drag */}
+      {touchDragging && draggedArticle && dragPosition && puzzle && (
+        <div
+          className="knowledge-web-drag-indicator"
+          style={{
+            left: `${dragPosition.x}px`,
+            top: `${dragPosition.y}px`,
+          }}
+        >
+          {(() => {
+            // Find thumbnail - could be from connections (pool) or from a filled slot
+            let thumbnail: string | undefined;
+            const connectionInfo = puzzle.connections.find(c => c.connectingArticle === draggedArticle);
+            thumbnail = connectionInfo?.thumbnail;
+            
+            return (
+              <>
+                {thumbnail ? (
+                  <>
+                    <img
+                      src={thumbnail}
+                      alt={draggedArticle}
+                      className="knowledge-web-drag-indicator-image"
+                    />
+                    <span className="knowledge-web-drag-indicator-text">{connectionInfo?.connectingArticle || draggedArticle}</span>
+                  </>
+                ) : (
+                  <span className="knowledge-web-drag-indicator-text">{connectionInfo?.connectingArticle || draggedArticle}</span>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -872,21 +1212,27 @@ const KnowledgeWebPage: React.FC = () => {
           }}
           onMouseEnter={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           {(() => {
             let thumbnail: string | undefined;
             
-            // Check if it's the featured article
-            if (previewArticle === puzzle.featured_article.title) {
+            // Check if it's the featured article (case-insensitive)
+            if (previewArticle === puzzle.featured_article.title || 
+                previewArticle.toLowerCase() === puzzle.featured_article.title.toLowerCase()) {
               thumbnail = puzzle.featured_article.thumbnail;
             } else {
-              // Check if it's a surrounding article
-              const surroundingArticle = puzzle.surrounding_articles.find(a => a.title === previewArticle);
+              // Check if it's a surrounding article (case-insensitive)
+              const surroundingArticle = puzzle.surrounding_articles.find(
+                a => a.title === previewArticle || a.title.toLowerCase() === previewArticle.toLowerCase()
+              );
               if (surroundingArticle) {
                 thumbnail = surroundingArticle.thumbnail;
               } else {
-                // Otherwise it's a connection article
-                const connectionInfo = puzzle.connections.find(c => c.connectingArticle === previewArticle);
+                // Otherwise it's a connection article (case-insensitive)
+                const connectionInfo = puzzle.connections.find(
+                  c => c.connectingArticle === previewArticle || c.connectingArticle.toLowerCase() === previewArticle.toLowerCase()
+                );
                 thumbnail = connectionInfo?.thumbnail;
               }
             }
@@ -898,12 +1244,24 @@ const KnowledgeWebPage: React.FC = () => {
                     src={thumbnail}
                     alt={previewArticle}
                     className="knowledge-web-preview-image"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewEnd();
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      handlePreviewEnd();
+                    }}
+                    style={{ cursor: 'pointer' }}
                   />
                 )}
                 <h3 className="knowledge-web-preview-title">{previewArticle}</h3>
+                {previewDescription && (
+                  <p className="knowledge-web-preview-description">{previewDescription}</p>
+                )}
                 {previewExtract ? (
                   <p className="knowledge-web-preview-extract">{previewExtract}</p>
-                ) : (
+                ) : previewDescription ? null : (
                   <p className="knowledge-web-preview-loading">Loading...</p>
                 )}
               </>

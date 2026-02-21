@@ -815,14 +815,18 @@ export const getDidYouKnowFacts = async (limit: number = 8): Promise<DidYouKnowE
 };
 
 export const getArticleExtract = async (title: string): Promise<string | null> => {
+  // Normalize title: replace spaces with underscores for API
+  const normalizedTitle = title.replace(/ /g, '_');
+  
   const params = new URLSearchParams({
     action: 'query',
     prop: 'extracts',
-    titles: title,
+    titles: normalizedTitle,
     exintro: 'true',      // Get only content before the first section
     explaintext: 'true',  // Get plain text, not HTML
     format: 'json',
-    origin: '*'
+    origin: '*',
+    redirects: '1' // Follow redirects
   });
 
   try {
@@ -832,6 +836,13 @@ export const getArticleExtract = async (title: string): Promise<string | null> =
       return null;
     }
     const data = await response.json();
+    
+    // Check for redirects
+    if (data.query?.redirects && data.query.redirects.length > 0) {
+      const redirect = data.query.redirects[0];
+      console.log(`API_EXTRACT: "${title}" redirected to "${redirect.to}"`);
+    }
+    
     const pages = data.query.pages;
     const pageId = Object.keys(pages)[0];
 
@@ -840,12 +851,16 @@ export const getArticleExtract = async (title: string): Promise<string | null> =
       return null;
     }
     
-    const extract = pages[pageId].extract;
+    const page = pages[pageId];
+    const extract = page.extract;
+    
     if (extract) {
-      // Truncate if too long for a card preview
-      const maxLength = 150; // Max characters for the snippet
+      // Truncate if too long for a card preview (increased for preview cards)
+      const maxLength = 350; // Max characters for the snippet (increased from 150)
       return extract.length > maxLength ? extract.substring(0, maxLength) + '...' : extract;
     }
+    
+    console.warn(`API_EXTRACT_WARN: No extract found for "${title}" (pageId: ${pageId})`);
     return null;
   } catch (error) {
     console.error(`Error fetching article extract for "${title}":`, error);
