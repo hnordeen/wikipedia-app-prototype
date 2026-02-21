@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/wikipedia-app-prototype/static/css/main.1b38a436.css",
-    "main.js": "/wikipedia-app-prototype/static/js/main.ca910cbc.js",
+    "main.css": "/wikipedia-app-prototype/static/css/main.329c9ff9.css",
+    "main.js": "/wikipedia-app-prototype/static/js/main.e3d991af.js",
     "static/js/453.d4fab04e.chunk.js": "/wikipedia-app-prototype/static/js/453.d4fab04e.chunk.js",
     "index.html": "/wikipedia-app-prototype/index.html",
-    "main.1b38a436.css.map": "/wikipedia-app-prototype/static/css/main.1b38a436.css.map",
-    "main.ca910cbc.js.map": "/wikipedia-app-prototype/static/js/main.ca910cbc.js.map",
+    "main.329c9ff9.css.map": "/wikipedia-app-prototype/static/css/main.329c9ff9.css.map",
+    "main.e3d991af.js.map": "/wikipedia-app-prototype/static/js/main.e3d991af.js.map",
     "453.d4fab04e.chunk.js.map": "/wikipedia-app-prototype/static/js/453.d4fab04e.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.1b38a436.css",
-    "static/js/main.ca910cbc.js"
+    "static/css/main.329c9ff9.css",
+    "static/js/main.e3d991af.js"
   ]
 }
